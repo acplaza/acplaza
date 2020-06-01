@@ -49,6 +49,7 @@ from nintendo.nex.backend import BackEndClient
 from nintendo.nex.authentication import AuthenticationInfo
 from nintendo.nex import matchmaking
 from nintendo.games import ACNH
+from nintendo.settings import Settings
 
 from utils import load_cached
 
@@ -96,8 +97,7 @@ pkey = prodinfo.get_ssl_key()
 with open(config['ticket-path'], 'rb') as f:
 	ticket = f.read()
 
-backend = BackEndClient('switch.cfg')
-backend.configure(ACNH.ACCESS_KEY, ACNH.NEX_VERSION, ACNH.CLIENT_VERSION)
+backend_settings = Settings('switch.cfg')
 
 def authenticate():
 	dauth = DAuthClient(keys)
@@ -124,6 +124,9 @@ def authenticate():
 	return resp['user-id'], resp['id-token']
 
 def connect(user_id, id_token):
+	backend = BackEndClient(backend_settings)
+	backend.configure(ACNH.ACCESS_KEY, ACNH.NEX_VERSION, ACNH.CLIENT_VERSION)
+
 	# connect to game server
 	backend.connect(HOST, PORT)
 
@@ -134,7 +137,9 @@ def connect(user_id, id_token):
 	auth_info.token_type = 2
 	backend.login(str(user_id), auth_info=auth_info)
 
-def _search_dodo_code(dodo_code: str):
+	return backend
+
+def _search_dodo_code(backend: BackEndClient, dodo_code: str):
 	mm = matchmaking.MatchmakeExtensionClient(backend.secure_client)
 
 	param = matchmaking.MatchmakeSessionSearchCriteria()
@@ -166,8 +171,8 @@ def search_dodo_code(dodo_code: str):
 		raise InvalidDodoCodeError
 
 	user_id, id_token = authenticate()
-	connect(user_id, id_token)
+	backend = connect(user_id, id_token)
 	try:
-		return _search_dodo_code(dodo_code)
+		return _search_dodo_code(backend, dodo_code)
 	finally:
 		backend.close()
