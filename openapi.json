@@ -1,0 +1,179 @@
+{
+	"openapi": "3.0.3",
+	"info": {
+		"title": "ACNH API",
+		"version": "1.0",
+		"description": "",
+		"x-logo": {
+			"url": ""
+		},
+		"license": {
+			"name": "GNU AGPLv3",
+			"url": "https://www.gnu.org/licenses/agpl-3.0.en.html",
+			"x-last-modified": 1591049318876
+		},
+		"contact": {
+			"name": "io mintz",
+			"email": "io@mintz.cc"
+		}
+	},
+	"paths": {
+		"/island/{dodo-code}": {
+			"summary": "Get information about an active Dodo Code\u2122.",
+			"get": {
+				"responses": {
+					"200 OK": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Island"
+								},
+								"encoding": "UTF-8"
+							}
+						},
+						"description": "A summary of the island referenced by the given Dodo Code\u2122.",
+						"type": "",
+						"x-last-modified": 1591049169339,
+						"$ref": null
+					},
+					"404 Not Found": {
+						"type": "",
+						"description": "In case the Dodo Code is not found.",
+						"content": {
+							"application/json": {
+								"encoding": "UTF-8",
+								"schema": {
+									"$ref": "#/components/schemas/Dodo Code Error"
+								}
+							}
+						},
+						"x-last-modified": 1591049229615
+					},
+					"400 Bad Request": {
+						"type": "",
+						"description": "In case the Dodo Code\u2122 is invalid.",
+						"content": {
+							"application/json": {
+								"encoding": "UTF-8",
+								"schema": {
+									"$ref": "#/components/schemas/Dodo Code Error"
+								}
+							}
+						},
+						"x-last-modified": 1591049263470
+					}
+				},
+				"description": "",
+				"tags": []
+			},
+			"x-last-modified": 1591046169736,
+			"parameters": [
+				{
+					"name": "dodo-code",
+					"in": "path",
+					"example": "MQ530",
+					"required": true,
+					"deprecated": false,
+					"description": "",
+					"schema": {
+						"example": "MQ530",
+						"type": "string",
+						"format": "",
+						"pattern": "[ABCDEFGHJKLMNPQRSTUVWXY0-9]{5}",
+						"enum": []
+					},
+					"type": "string",
+					"format": "",
+					"pattern": "[ABCDEFGHJKLMNPQRSTUVWXY0-9]{5}",
+					"enum": [],
+					"x-last-modified": 1591048451480
+				}
+			]
+		}
+	},
+	"components": {
+		"securitySchemes": {},
+		"schemas": {
+			"Island": {
+				"example": {
+					"active_players": 2,
+					"id": 156770002,
+					"name": "Bebopville"
+				},
+				"type": "object",
+				"enum": [],
+				"required": [
+					"id",
+					"active_players",
+					"name"
+				],
+				"properties": {
+					"active_players": {
+						"type": "integer",
+						"format": "int32",
+						"description": "How many players are currently on the island.",
+						"minimum": 1,
+						"maximum": 8
+					},
+					"id": {
+						"type": "integer",
+						"format": "int64",
+						"description": "The ID of the island."
+					},
+					"name": {
+						"type": "string",
+						"description": "The name of the island.",
+						"minLength": 1,
+						"maxLength": 20
+					}
+				},
+				"description": "A summary of the island.",
+				"x-last-modified": 1591048378442
+			},
+			"Dodo Code Error": {
+				"example": {
+					"error": "invalid dodo code",
+					"error_code": 2,
+					"validation_regex": "[ABCDEFGHJKLMNPQRSTUVWXY0-9]{5}"
+				},
+				"type": "object",
+				"enum": [],
+				"required": [
+					"error",
+					"error_code"
+				],
+				"properties": {
+					"error": {
+						"type": "string",
+						"description": "A human-readable description of the error."
+					},
+					"error_code": {
+						"type": "integer",
+						"format": "int32"
+					},
+					"validation_regex": {
+						"type": "string",
+						"format": "regex"
+					}
+				},
+				"description": "An error occurred with the provided Dodo Code\u2122.",
+				"x-last-modified": 1591049141626
+			}
+		},
+		"responses": {},
+		"parameters": {}
+	},
+	"tags": [],
+	"servers": [
+		{
+			"url": "https://acnh-api.ashitty.website"
+		},
+		{
+			"url": "http://op4jg264thcqlzbvyskutiowagqx37alpwglx6nnageopfol3vjraqid.onion"
+		}
+	],
+	"security": [],
+	"externalDocs": {
+		"url": "https://github.com/iomintz/acnh-api"
+	}
+}

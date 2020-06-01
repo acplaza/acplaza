@@ -27,6 +27,9 @@ import utils
 app = Flask(__name__)
 app.json_encoder = utils.UnicodeJSONEncoder
 
+with open('openapi.json') as f:
+	open_api_spec = json.load(f)
+
 @app.route('/island/<dodo_code>')
 def island(dodo_code):
 	try:
@@ -35,6 +38,10 @@ def island(dodo_code):
 		return ex.to_dict(), HTTPStatus.NOT_FOUND
 	except acnh.InvalidDodoCodeError as ex:
 		return ex.to_dict(), HTTPStatus.BAD_REQUEST
+
+@app.route('/')
+def api_spec():
+	return open_api_spec
 
 @app.errorhandler(HTTPException)
 def handle_exception(ex):
