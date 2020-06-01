@@ -96,6 +96,9 @@ pkey = prodinfo.get_ssl_key()
 with open(config['ticket-path'], 'rb') as f:
 	ticket = f.read()
 
+backend = BackEndClient('switch.cfg')
+backend.configure(ACNH.ACCESS_KEY, ACNH.NEX_VERSION, ACNH.CLIENT_VERSION)
+
 def authenticate():
 	dauth = DAuthClient(keys)
 	dauth.set_certificate(cert, pkey)
@@ -122,8 +125,6 @@ def authenticate():
 
 def connect(user_id, id_token):
 	# connect to game server
-	backend = BackEndClient('switch.cfg')
-	backend.configure(ACNH.ACCESS_KEY, ACNH.NEX_VERSION, ACNH.CLIENT_VERSION)
 	backend.connect(HOST, PORT)
 
 	# log in on game server
@@ -133,9 +134,7 @@ def connect(user_id, id_token):
 	auth_info.token_type = 2
 	backend.login(str(user_id), auth_info=auth_info)
 
-	return backend
-
-def _search_dodo_code(backend: BackEndClient, dodo_code: str):
+def _search_dodo_code(dodo_code: str):
 	mm = matchmaking.MatchmakeExtensionClient(backend.secure_client)
 
 	param = matchmaking.MatchmakeSessionSearchCriteria()
@@ -167,8 +166,8 @@ def search_dodo_code(dodo_code: str):
 		raise InvalidDodoCodeError
 
 	user_id, id_token = authenticate()
-	backend = connect(user_id, id_token)
-	rv = _search_dodo_code(backend, dodo_code)
-	# disconnect from game server
-	backend.close()
-	return rv
+	connect(user_id, id_token)
+	try:
+		return _search_dodo_code(dodo_code)
+	finally:
+		backend.close()
