@@ -22,8 +22,10 @@ from flask import Flask, jsonify
 from werkzeug.exceptions import HTTPException
 
 import acnh
+import utils
 
 app = Flask(__name__)
+app.json_encoder = utils.UnicodeJSONEncoder
 
 @app.route('/island/<dodo_code>')
 def island(dodo_code):
