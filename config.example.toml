@@ -1,0 +1,22 @@
+# You can get your user id and password from
+# su/baas/<guid>.dat in save folder 8000000000000010.
+
+# Bytes 0x20 - 0x28 contain the user id as a single little endian integer,
+# and bytes 0x28 - 0x50 contain the
+# password in plain text.
+
+# Alternatively, you can set up a mitm on your Switch
+# and extract them from the request to /1.0.0/login
+
+baas-user-id = 0x0123456789abcdef  # 40 hex digits
+baas-password = "..."  # should be 40 characters
+
+# You can dump prod.keys with Lockpick_RCM and
+# PRODINFO from hekate (decrypt it if necessary)
+keyset-path = "/path/to/prod.keys"
+prodinfo-path = "/path/to/PRODINFO.img"
+
+# Tickets can be dumped with nxdumptool.
+# You need the base ticket, not an update ticket.
+# Do not remove console specific data.
+ticket-path = "/path/to/acnh-base.tik"
