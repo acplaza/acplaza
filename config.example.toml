@@ -8,7 +8,7 @@
 # Alternatively, you can set up a mitm on your Switch
 # and extract them from the request to /1.0.0/login
 
-baas-user-id = 0x0123456789abcdef  # 40 hex digits
+baas-user-id = 0x0123456789abcdef  # 16 hex digits
 baas-password = "..."  # should be 40 characters
 
 # You can dump prod.keys with Lockpick_RCM and
