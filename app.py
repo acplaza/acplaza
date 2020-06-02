@@ -25,6 +25,7 @@ import acnh
 import utils
 
 app = Flask(__name__)
+app.config['PROPAGATE_EXCEPTIONS'] = True
 app.json_encoder = utils.UnicodeJSONEncoder
 
 with open('openapi.json') as f:
