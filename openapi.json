@@ -27,36 +27,29 @@
 							"application/json": {
 								"schema": {
 									"$ref": "#/components/schemas/Island"
-								},
-								"encoding": "UTF-8"
+								}
 							}
 						},
 						"description": "A summary of the island referenced by the given Dodo Code\u2122.",
-						"type": "",
-						"x-last-modified": 1591049169339,
-						"$ref": null
+						"x-last-modified": 1591049169339
 					},
 					"404 Not Found": {
-						"type": "",
 						"description": "In case the Dodo Code is not found.",
 						"content": {
 							"application/json": {
-								"encoding": "UTF-8",
 								"schema": {
-									"$ref": "#/components/schemas/Dodo Code Error"
+									"$ref": "#/components/schemas/Dodo-Code-Error"
 								}
 							}
 						},
 						"x-last-modified": 1591049229615
 					},
 					"400 Bad Request": {
-						"type": "",
 						"description": "In case the Dodo Code\u2122 is invalid.",
 						"content": {
 							"application/json": {
-								"encoding": "UTF-8",
 								"schema": {
-									"$ref": "#/components/schemas/Dodo Code Error"
+									"$ref": "#/components/schemas/Dodo-Code-Error"
 								}
 							}
 						},
@@ -82,10 +75,6 @@
 						"pattern": "[ABCDEFGHJKLMNPQRSTUVWXY0-9]{5}",
 						"enum": []
 					},
-					"type": "string",
-					"format": "",
-					"pattern": "[ABCDEFGHJKLMNPQRSTUVWXY0-9]{5}",
-					"enum": [],
 					"x-last-modified": 1591048451480
 				}
 			]
@@ -130,7 +119,7 @@
 				"description": "A summary of the island.",
 				"x-last-modified": 1591048378442
 			},
-			"Dodo Code Error": {
+			"Dodo-Code-Error": {
 				"example": {
 					"error": "invalid dodo code",
 					"error_code": 2,
