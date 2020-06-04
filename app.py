@@ -26,7 +26,7 @@ import acnh.designs
 import utils
 
 app = Flask(__name__)
-app.json_encoder = utils.UnicodeJSONEncoder
+app.json_encoder = utils.CustomJSONEncoder
 
 @app.route('/host-session/<dodo_code>')
 def host_session(dodo_code):
