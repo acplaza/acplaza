@@ -164,7 +164,12 @@ def _search_dodo_code(backend: BackEndClient, dodo_code: str):
 
 	session = sessions[0]
 	data = session.application_data
-	return dict(id=session.id, active_players=session.player_count, name=data[12:32].decode('utf-16'))
+	return dict(
+		id=session.id,
+		active_players=session.player_count,
+		name=data[12:32].decode('utf-16').rstrip('\0'),
+		host=data[40:60].decode('utf-16').rstrip('\0'),
+	)
 
 def search_dodo_code(dodo_code: str):
 	if not DODO_CODE_RE.fullmatch(dodo_code):

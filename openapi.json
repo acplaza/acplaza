@@ -2,7 +2,7 @@
 	"openapi": "3.0.3",
 	"info": {
 		"title": "ACNH API",
-		"version": "1.0",
+		"version": "1.1",
 		"description": "",
 		"x-logo": {
 			"url": ""
@@ -19,7 +19,7 @@
 	},
 	"paths": {
 		"/island/{dodo-code}": {
-			"summary": "Get information about an active Dodo Code\u2122.",
+			"summary": "Get information about an active Dodo Code™.",
 			"get": {
 				"responses": {
 					"200 OK": {
@@ -87,14 +87,16 @@
 				"example": {
 					"active_players": 2,
 					"id": 156770002,
-					"name": "Bebopville"
+					"name": "Bebopville",
+					"host": "King"
 				},
 				"type": "object",
 				"enum": [],
 				"required": [
 					"id",
 					"active_players",
-					"name"
+					"name",
+					"host"
 				],
 				"properties": {
 					"active_players": {
@@ -114,10 +116,16 @@
 						"description": "The name of the island.",
 						"minLength": 1,
 						"maxLength": 20
+					},
+					"host": {
+						"type": "string",
+						"description": "The name of the island's host.",
+						"minLength": 1,
+						"maxLength": 20
 					}
 				},
 				"description": "A summary of the island.",
-				"x-last-modified": 1591048378442
+				"x-last-modified": 1591253713486
 			},
 			"Dodo-Code-Error": {
 				"example": {
