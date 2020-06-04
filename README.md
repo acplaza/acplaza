@@ -1,6 +1,16 @@
 # ACNH API
 
-This is a REST API to look up islands by their Dodo Codes. More functionality is planned.
+This is a REST API for programmatic access to Dodo Codes and Custom Designs.
+
+## Endpoints
+
+- /host-session/:dodo-code
+Returns info about an active island hosting session.
+- /design/:custom-design-code
+Returns the unprocessed response from Nintendo's servers. Contains the raw data for the image along with its palette
+and creator information. Binary data (`resp.mData.mData`) is base64 encoded.
+- /design/:custom-design-code.tar
+Returns a tar archive containing a PNG render of each layer of the given custom design code.
 
 ## Setup
 
