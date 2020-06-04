@@ -14,11 +14,12 @@
 # along with ACNH API. If not, see <https://www.gnu.org/licenses/>.
 
 import re
+import urllib.parse
 
 import msgpack
 from nintendo.common.http import HTTPRequest
 
-from .common import config, authenticate_aauth, authenticate_app, ACNHError, InvalidFormatMixin, ACNHClient
+from .common import config, authenticate_aauth, authenticate_acnh, ACNHError, InvalidFormatMixin, ACNHClient
 
 class DesignCodeError(ACNHError):
 	pass
@@ -50,12 +51,12 @@ def design_id(pattern_code):
 
 def _download_design(token, design_code):
 	acnh = ACNHClient(token)
-	req = HTTPRequest.get('/api/v2/designs')
-	req.params['offset'] = '0'
-	req.params['limit'] = '40'
-	req.params['q[design_id]'] = str(design_id(design_code))
-	print(acnh.request(req).body)
-	resp = msgpack.loads(acnh.request(req).body)
+	resp = acnh.request('GET', '/api/v2/designs', params={
+		'offset': '0',
+		'limit': '40',
+		'q[design_id]': str(design_id(design_code)),
+	})
+	resp = msgpack.loads(resp.content)
 
 	if not resp['total']:
 		raise UnknownDesignCodeError
@@ -64,10 +65,10 @@ def _download_design(token, design_code):
 	headers = resp['headers'][0]
 
 	url = urllib.parse.urlparse(headers['body'])
-	req = HTTPRequest.get(url.path + '?' + url.query)
-	return msgpack.loads(acnh.request(req).body)
+	resp = acnh.request('GET', url.path + '?' + url.query)
+	return msgpack.loads(resp.content)
 
 def download_design(design_code):
 	_, id_token = authenticate_aauth()
-	token = authenticate_app(id_token)
+	token = authenticate_acnh(id_token)
 	return _download_design(token, design_code)

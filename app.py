@@ -22,6 +22,7 @@ from flask import Flask, jsonify
 from werkzeug.exceptions import HTTPException
 
 import acnh.dodo
+import acnh.designs
 import utils
 
 app = Flask(__name__)
@@ -34,6 +35,15 @@ def host_session(dodo_code):
 	except acnh.dodo.UnknownDodoCodeError as ex:
 		return ex.to_dict(), HTTPStatus.NOT_FOUND
 	except acnh.dodo.InvalidDodoCodeError as ex:
+		return ex.to_dict(), HTTPStatus.BAD_REQUEST
+
+@app.route('/design/<design_code>')
+def design(design_code):
+	try:
+		return acnh.designs.download_design(design_code)
+	except acnh.designs.UnknownDesignCodeError as ex:
+		return ex.to_dict(), HTTPStatus.NOT_FOUND
+	except acnh.designs.InvalidDesignCodeError as ex:
 		return ex.to_dict(), HTTPStatus.BAD_REQUEST
 
 with open('openapi.json') as f:

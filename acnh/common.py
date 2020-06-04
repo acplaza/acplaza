@@ -38,10 +38,12 @@ import datetime as dt
 import enum
 import logging
 import re
+import urllib.parse
 from typing import ClassVar
 
 import msgpack
 import toml
+import requests
 
 from nintendo.baas import BAASClient
 from nintendo.dauth import DAuthClient
@@ -52,7 +54,6 @@ from nintendo.nex.authentication import AuthenticationInfo
 from nintendo.nex import matchmaking
 from nintendo.games import ACNH
 from nintendo.settings import Settings
-from nintendo.common.http import HTTPClient, HTTPRequest
 
 from .utils import load_cached
 
@@ -91,20 +92,25 @@ class InvalidFormatMixin:
 		return d
 
 class ACNHClient:
-	host = 'api.hac.lp1.acbaa.srv.nintendo.net'
+	BASE = 'https://api.hac.lp1.acbaa.srv.nintendo.net'
+	HEADERS = {
+		'User-Agent': 'libcurl/7.64.1 (HAC; nnEns; SDK 9.3.4.0)',
+		'Host': urllib.parse.urlparse(BASE).netloc,
+		'Accept': '*/*',
+	}
 
 	def __init__(self, token):
-		self.client = HTTPClient()
 		self.token = token
+		self.session = requests.Session()
+		self.session.headers.clear()
+		self.session.headers.update(self.HEADERS)
+		self.session.headers['Authorization'] = 'Bearer ' + token
 
-	def request(self, req):
-		req.headers['Host'] = self.host
-		req.headers['User-Agent'] = 'libcurl/7.64.1 (HAC; nnEns; SDK 9.3.4.0)'
-		if req.method != 'GET':
-			req.headers['Content-Type'] = 'application/x-msgpack'
-		req.headers['Accept'] = '*/*'
-		req.headers['Authorization'] = 'Bearer ' + self.token
-		return self.client.request(req, tls=True)
+	def request(self, method, path, **kwargs):
+		headers = {}
+		if method != 'GET':
+			headers['Content-Type'] = 'application/x-msgpack'
+		return self.session.request(method, self.BASE + path, verify=False, headers=headers, **kwargs)
 
 def authenticate_aauth():
 	dauth = DAuthClient(keys)
@@ -130,15 +136,16 @@ def authenticate_aauth():
 	resp = toml.loads(load_cached('tokens/id-token.txt', get_id_token, duration=3 * 60 * 60))
 	return resp['user-id'], resp['id-token']
 
-def authenticate_app(id_token):
+def authenticate_acnh(id_token):
 	acnh = ACNHClient(id_token)
-	req = HTTPRequest.post('/api/v1/auth_token')
-	req.body = msgpack.dumps({'id': config['acnh-user-id'], 'password': config['acnh-password']})
 
 	def get_app_token():
-		resp = acnh.request(req)
-		assert resp.status in range(200, 300), resp.status
-		return resp.body
+		resp = acnh.request('POST', '/api/v1/auth_token', data=msgpack.dumps({
+			'id': config['acnh-user-id'],
+			'password': config['acnh-password'],
+		}))
+		resp.raise_for_status()
+		return resp.content
 
 	resp = msgpack.loads(load_cached(
 		'tokens/acnh-token.msgpack',
