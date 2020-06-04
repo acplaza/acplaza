@@ -11,6 +11,12 @@
 baas-user-id = 0x0123456789abcdef  # 16 hex digits
 baas-password = "..."  # should be 40 characters
 
+# Get this by mitming api.hac.lp1.acbaa.srv.nintendo.net/api/v1/auth_token on your Switch,
+# at least until I find a better way
+
+acnh-user-id = 0x0123456789abcdef  # 16 hex digits
+acnh-password = "..."  # should be 64 characters
+
 # You can dump prod.keys with Lockpick_RCM and
 # PRODINFO from hekate (decrypt it if necessary)
 keyset-path = "/path/to/prod.keys"
