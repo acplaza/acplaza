@@ -25,11 +25,7 @@ import acnh
 import utils
 
 app = Flask(__name__)
-# app.config['PROPAGATE_EXCEPTIONS'] = True
 app.json_encoder = utils.UnicodeJSONEncoder
-
-with open('openapi.json') as f:
-	open_api_spec = json.load(f)
 
 @app.route('/host-session/<dodo_code>')
 def host_session(dodo_code):
@@ -39,6 +35,9 @@ def host_session(dodo_code):
 		return ex.to_dict(), HTTPStatus.NOT_FOUND
 	except acnh.InvalidDodoCodeError as ex:
 		return ex.to_dict(), HTTPStatus.BAD_REQUEST
+
+with open('openapi.json') as f:
+	open_api_spec = json.load(f)
 
 @app.route('/')
 def api_spec():
