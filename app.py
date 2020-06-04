@@ -25,14 +25,14 @@ import acnh
 import utils
 
 app = Flask(__name__)
-app.config['PROPAGATE_EXCEPTIONS'] = True
+# app.config['PROPAGATE_EXCEPTIONS'] = True
 app.json_encoder = utils.UnicodeJSONEncoder
 
 with open('openapi.json') as f:
 	open_api_spec = json.load(f)
 
-@app.route('/island/<dodo_code>')
-def island(dodo_code):
+@app.route('/host-session/<dodo_code>')
+def host_session(dodo_code):
 	try:
 		return acnh.search_dodo_code(dodo_code)
 	except acnh.UnknownDodoCodeError as ex:

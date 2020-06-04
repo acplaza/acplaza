@@ -2,7 +2,7 @@
 	"openapi": "3.0.3",
 	"info": {
 		"title": "ACNH API",
-		"version": "1.1",
+		"version": "1.2",
 		"description": "",
 		"x-logo": {
 			"url": ""
@@ -18,7 +18,7 @@
 		}
 	},
 	"paths": {
-		"/island/{dodo-code}": {
+		"/host-session/{dodo-code}": {
 			"summary": "Get information about an active Dodo Code™.",
 			"get": {
 				"responses": {
@@ -26,11 +26,11 @@
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/Island"
+									"$ref": "#/components/schemas/Island-Session"
 								}
 							}
 						},
-						"description": "A summary of the island referenced by the given Dodo Code™.",
+						"description": "A summary of the island hosting session referenced by the given Dodo Code™.",
 						"x-last-modified": 1591049169339
 					},
 					"404 Not Found": {
@@ -83,20 +83,20 @@
 	"components": {
 		"securitySchemes": {},
 		"schemas": {
-			"Island": {
+			"Island-Session": {
 				"example": {
 					"active_players": 2,
-					"id": 156770002,
 					"name": "Bebopville",
-					"host": "King"
+					"host": "King",
+					"start_time": "2020-06-04T02:12:16.744964+00:00"
 				},
 				"type": "object",
 				"enum": [],
 				"required": [
-					"id",
 					"active_players",
 					"name",
-					"host"
+					"host",
+					"start_time"
 				],
 				"properties": {
 					"active_players": {
@@ -105,11 +105,6 @@
 						"description": "How many players are currently on the island.",
 						"minimum": 1,
 						"maximum": 8
-					},
-					"id": {
-						"type": "integer",
-						"format": "int64",
-						"description": "The ID of the island."
 					},
 					"name": {
 						"type": "string",
@@ -122,10 +117,15 @@
 						"description": "The name of the island's host.",
 						"minLength": 1,
 						"maxLength": 20
+					},
+					"start_time": {
+						"type": "string",
+						"format": "date-time",
+						"description": "The time (in UTC) that the host started this session."
 					}
 				},
-				"description": "A summary of the island.",
-				"x-last-modified": 1591253713486
+				"description": "A summary of the island hosting session.",
+				"x-last-modified": 1591254860106
 			},
 			"Dodo-Code-Error": {
 				"example": {

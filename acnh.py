@@ -13,6 +13,7 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with ACNH API. If not, see <https://www.gnu.org/licenses/>.
 
+import datetime as dt
 import enum
 import logging
 import re
@@ -165,10 +166,13 @@ def _search_dodo_code(backend: BackEndClient, dodo_code: str):
 	session = sessions[0]
 	data = session.application_data
 	return dict(
-		id=session.id,
 		active_players=session.player_count,
 		name=data[12:32].decode('utf-16').rstrip('\0'),
 		host=data[40:60].decode('utf-16').rstrip('\0'),
+		start_time=
+			dt.datetime.fromtimestamp(session.started_time.timestamp())
+			.replace(tzinfo=dt.timezone.utc)
+			.isoformat(),
 	)
 
 def search_dodo_code(dodo_code: str):
