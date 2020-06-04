@@ -2,3 +2,4 @@ Flask>=1.1.2,<2.0.0
 Nintendo @ git+https://github.com/Kinnay/NintendoClients.git
 toml>=0.10.0,<1.0.0
 msgpack>=1.0.0,<2.0.0
+Pillow>=7.1.2,<8.0.0

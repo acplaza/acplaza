@@ -29,7 +29,7 @@ class UnknownDesignCodeError(DesignCodeError):
 	message = 'unknown design code'
 
 _design_code_segment = '[0-9BCDFGHJKLMNPQRSTVWXY]{4}'
-DESIGN_CODE_RE = re.compile('\\-'.join([_design_code_segment] * 4))
+DESIGN_CODE_RE = re.compile('\\-'.join([_design_code_segment] * 3))
 
 class InvalidDesignCodeError(DesignCodeError, InvalidFormatMixin):
 	code = 22
