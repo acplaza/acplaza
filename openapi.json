@@ -30,7 +30,7 @@
 								}
 							}
 						},
-						"description": "A summary of the island referenced by the given Dodo Code\u2122.",
+						"description": "A summary of the island referenced by the given Dodo Code™.",
 						"x-last-modified": 1591049169339
 					},
 					"404 Not Found": {
@@ -45,7 +45,7 @@
 						"x-last-modified": 1591049229615
 					},
 					"400 Bad Request": {
-						"description": "In case the Dodo Code\u2122 is invalid.",
+						"description": "In case the Dodo Code™ is invalid.",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -153,8 +153,8 @@
 						"format": "regex"
 					}
 				},
-				"description": "An error occurred with the provided Dodo Code\u2122.",
-				"x-last-modified": 1591049141626
+				"description": "An error occurred with the provided Dodo Code™.",
+				"x-last-modified": 1591253713486
 			}
 		},
 		"responses": {},
