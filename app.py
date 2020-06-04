@@ -21,7 +21,7 @@ from http import HTTPStatus
 from flask import Flask, jsonify
 from werkzeug.exceptions import HTTPException
 
-import acnh
+import acnh.dodo
 import utils
 
 app = Flask(__name__)
@@ -30,10 +30,10 @@ app.json_encoder = utils.UnicodeJSONEncoder
 @app.route('/host-session/<dodo_code>')
 def host_session(dodo_code):
 	try:
-		return acnh.search_dodo_code(dodo_code)
-	except acnh.UnknownDodoCodeError as ex:
+		return acnh.dodo.search_dodo_code(dodo_code)
+	except acnh.dodo.UnknownDodoCodeError as ex:
 		return ex.to_dict(), HTTPStatus.NOT_FOUND
-	except acnh.InvalidDodoCodeError as ex:
+	except acnh.dodo.InvalidDodoCodeError as ex:
 		return ex.to_dict(), HTTPStatus.BAD_REQUEST
 
 with open('openapi.json') as f:
