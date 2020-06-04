@@ -48,14 +48,12 @@ with open('/path/to/<guid>.dat', 'rb') as f:
 
 ## License
 
-AGPLv3, see LICENSE.md.
+AGPLv3 or later, see LICENSE.md.
 
-### Additional terms
+### Additional terms / credits
 
 - acnh/common.py is based on code provided by Yannik Marchand, used under the MIT License.
 See that file for details.
-- acnh/design_render.py is based on code provided by ImRock,
-used under a cursed license which you can read in that file if you want to poison your eyes.
-The code itself is good though, thanks ImRock!
+- acnh/design_render.py is provided by @nickwanninger under the AGPLv3 or later license.
 - tarfile_stream.py is based on the Python standard library tarfile.py and used under the MIT License.
 See that file for details.
