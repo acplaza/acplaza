@@ -1,13 +1,14 @@
 import base64
-import flask.json
 import json
-from werkzeug.routing import BaseConverter, ValidationError
+
+import flask.json
+from flask import current_app
 from werkzeug.exceptions import HTTPException
-from acnh.designs import DESIGN_CODE_RE
+from acnh.common import ACNHError
 
 def init_app(app):
 	app.json_encoder = CustomJSONEncoder
-	app.url_map.converters['design_code'] = DesignCodeConverter
+	app.errorhandler(ACNHError)(handle_acnh_exception)
 	app.errorhandler(HTTPException)(handle_exception)
 
 class CustomJSONEncoder(flask.json.JSONEncoder):
@@ -20,14 +21,14 @@ class CustomJSONEncoder(flask.json.JSONEncoder):
 			return base64.b64encode(x).decode()
 		return super().default(x)
 
-class DesignCodeConverter(BaseConverter):
-	def to_python(self, value):
-		if not DESIGN_CODE_RE.fullmatch(value):
-			raise ValidationError
-		return value
-
-	def to_url(self, value):
-		return value
+def handle_acnh_exception(ex):
+	"""Return JSON instead of HTML for ACNH errors"""
+	d = ex.to_dict()
+	response = current_app.response_class()
+	response.status_code = d['http_status']
+	response.data = json.dumps(d)
+	response.content_type = 'application/json'
+	return response
 
 def handle_exception(ex):
 	"""Return JSON instead of HTML for HTTP errors."""

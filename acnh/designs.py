@@ -15,11 +15,12 @@
 
 import re
 import urllib.parse
+from http import HTTPStatus
 
 import msgpack
 from nintendo.common.http import HTTPRequest
 
-from .common import config, authenticate_aauth, authenticate_acnh, ACNHError, InvalidFormatMixin, ACNHClient
+from .common import config, authenticate_aauth, authenticate_acnh, ACNHError, InvalidFormatError, ACNHClient
 
 class DesignCodeError(ACNHError):
 	pass
@@ -27,16 +28,17 @@ class DesignCodeError(ACNHError):
 class UnknownDesignCodeError(DesignCodeError):
 	code = 21
 	message = 'unknown design code'
+	http_status = HTTPStatus.BAD_REQUEST
 
-_design_code_segment = '[0-9BCDFGHJKLMNPQRSTVWXY]{4}'
-DESIGN_CODE_RE = re.compile('\\-'.join([_design_code_segment] * 3))
+_design_code_alphabet = '0123456789BCDFGHJKLMNPQRSTVWXY'
+DESIGN_CODE_ALPHABET = {c: val for val, c in enumerate(_design_code_alphabet)}
 
-class InvalidDesignCodeError(DesignCodeError, InvalidFormatMixin):
+class InvalidDesignCodeError(DesignCodeError, InvalidFormatError):
 	code = 22
 	message = 'invalid design code'
-	regex = DESIGN_CODE_RE.pattern
-
-DESIGN_CODE_ALPHABET = {c: i for i, c in enumerate('0123456789BCDFGHJKLMNPQRSTVWXY')}
+	_design_code_segment = f'[{_design_code_alphabet}]{{4}}'
+	regex = re.compile('-'.join([_design_code_segment] * 3))
+	del _design_code_segment
 
 def design_id(pattern_code):
 	code = pattern_code.replace('-', '')
@@ -69,6 +71,8 @@ def _download_design(token, design_code):
 	return msgpack.loads(resp.content)
 
 def download_design(design_code):
+	InvalidDesignCodeError.validate(design_code)
+
 	_, id_token = authenticate_aauth()
 	token = authenticate_acnh(id_token)
 	return _download_design(token, design_code)

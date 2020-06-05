@@ -68,6 +68,5 @@ with open('openapi.json') as f:
 def api_spec():
 	return open_api_spec
 
-
 if __name__ == '__main__':
 	app.run(use_reloader=True)

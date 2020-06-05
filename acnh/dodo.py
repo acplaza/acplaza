@@ -14,25 +14,25 @@
 # along with ACNH API. If not, see <https://www.gnu.org/licenses/>.
 
 import re
+from http import HTTPStatus
 
 from nintendo.nex.backend import BackEndClient
 from nintendo.nex import matchmaking
 
-from .common import authenticate_aauth, connect_backend, ACNHError, InvalidFormatMixin
+from .common import authenticate_aauth, connect_backend, ACNHError, InvalidFormatError
 
 class DodoCodeError(ACNHError):
 	pass
 
 class UnknownDodoCodeError(DodoCodeError):
 	code = 11
+	http_status = HTTPStatus.NOT_FOUND
 	message = 'unknown dodo code'
 
-DODO_CODE_RE = re.compile('[ABCDEFGHJKLMNPQRSTUVWXY0-9]{5}')
-
-class InvalidDodoCodeError(DodoCodeError, InvalidFormatMixin):
+class InvalidDodoCodeError(DodoCodeError, InvalidFormatError):
 	code = 12
 	message = 'invalid dodo code'
-	regex = DODO_CODE_RE.pattern
+	regex = re.compile('[A-HJ-NP-Y0-9]{5}')
 
 # _search_dodo_code is based on code provided by Yannik Marchand under the MIT License.
 # Copyright (c) 2017 Yannik Marchand
@@ -91,8 +91,7 @@ def _search_dodo_code(backend: BackEndClient, dodo_code: str):
 	)
 
 def search_dodo_code(dodo_code: str):
-	if not DODO_CODE_RE.fullmatch(dodo_code):
-		raise InvalidDodoCodeError
+	InvalidDodoCodeError.validate(dodo_code)
 
 	user_id, id_token = authenticate_aauth()
 	backend = connect_backend(user_id, id_token)

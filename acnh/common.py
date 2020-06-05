@@ -40,6 +40,7 @@ import logging
 import re
 import urllib.parse
 from typing import ClassVar
+from http import HTTPStatus
 
 import msgpack
 import toml
@@ -78,18 +79,27 @@ backend_settings = Settings('switch.cfg')
 class ACNHError(Exception):
 	code: ClassVar[int]
 	message: ClassVar[str]
+	http_status: ClassVar[int]
 
 	def __int__(self):
 		return self.code
 
 	def to_dict(self):
-		return {'error': self.message, 'error_code': self.code}
+		return {'error': self.message, 'error_code': self.code, 'http_status': self.http_status}
 
-class InvalidFormatMixin:
+class InvalidFormatError(ACNHError):
+	http_status = HTTPStatus.BAD_REQUEST
+	regex: re.Pattern
+
 	def to_dict(self):
 		d = super().to_dict()
-		d['validation_regex'] = self.regex
+		d['validation_regex'] = self.regex.pattern
 		return d
+
+	@classmethod
+	def validate(cls, s):
+		if not cls.regex.fullmatch(s):
+			raise cls
 
 class ACNHClient:
 	BASE = 'https://api.hac.lp1.acbaa.srv.nintendo.net'
