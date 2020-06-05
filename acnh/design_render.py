@@ -16,10 +16,23 @@
 import io
 from PIL import Image
 
+from .common import ACNHError
+
+class InvalidLayerIndexError(ACNHError):
+	code = 31
+	message = 'invalid image layer'
+
+	def __init__(self, *, num_layers):
+		self.num_layers = num_layers
+
+	def to_dict(self):
+		d = super().to_dict()
+		d['num_layers'] = self.num_layers
+
 SIZE = (32, 32)
 WIDTH, HEIGHT = SIZE
 
-def render_layers(raw_image):
+def gen_palette(raw_image):
 	palette = {}
 	for ind, color in raw_image['mPalette'].items():
 		r = (color >> 24) & 0xFF
@@ -29,34 +42,49 @@ def render_layers(raw_image):
 		palette[int(ind)] = (r, g, b, a)
 	# implicit transparent
 	palette[0xF] = (0, 0, 0, 0)
+	return palette
 
+def _render_layer(raw_image, palette, layer) -> io.BytesIO:
+	palette = gen_palette(raw_image)
+
+	# create a new image for this layer
+	im = Image.new('RGBA', SIZE)
+
+	# grab them pixels
+	pixels = im.load()
+
+	for pixi, byte in zip(range(0, WIDTH * HEIGHT, 2), layer):
+		b1 = byte & 0xF
+		b2 = (byte >> 4) & 0xF
+
+		# each byte of input supplies two pixels, so use `enumerate` to
+		# get an offset so we handle both pixels using one block of code
+		# woot! no code duplication!
+		for offset, nibble in enumerate([b1, b2]):
+			# calculate the x and y using a smarter method than division (1 cycle vs 30)
+			# you could divide and mod by HEIGHT-1 here instead, but this is ***FASTER***
+			# NOTE: dependent on HEIGHT being a power of two
+			x = (pixi + offset) & (HEIGHT - 1)
+			y = (pixi + offset) >> 5
+			pixels[x, y] = palette[nibble]
+
+	out = io.BytesIO()
+	im.save(out, format='PNG')
+	out.seek(0)
+	im.close()
+	return out
+
+def render_layer(raw_image, layer_i: int) -> io.BytesIO:
+	try:
+		layer = raw_image['mData'][str(layer_i)]
+	except KeyError:
+		raise InvalidLayerIndexError(num_layers=len(raw_image['mData']))
+
+	return _render_layer(raw_image, gen_palette(raw_image), layer)
+
+def render_layers(raw_image):
+	palette = gen_palette(raw_image)
 	# idk there's probably some python nerd `map` thing you can do here I'm a
 	# C programmer so I like the word `for` more than that functional nonsense
-	images = {}
 	for layer_i, layer in raw_image['mData'].items():
-		# create a 32x32 image for this layer
-		im = Image.new('RGBA', SIZE)
-
-		# grab them pixels
-		pixels = im.load()
-
-		for pixi, byte in zip(range(0, WIDTH * HEIGHT, 2), layer):
-			b1 = byte & 0xF
-			b2 = (byte >> 4) & 0xF
-
-			# each byte of input supplies two pixels, so use `enumerate` to
-			# get an offset so we handle both pixels using one block of code
-			# woot! no code duplication!
-			for offset, nibble in enumerate([b1, b2]):
-				# calculate the x and y using a smarter method than division (1 cycle vs 30)
-				# you could divide and mod by HEIGHT-1 here instead, but this is ***FASTER***
-				# NOTE: dependent on HEIGHT being a power of two
-				x = (pixi + offset) & (HEIGHT - 1)
-				y = (pixi + offset) >> 5
-				pixels[x, y] = palette[nibble]
-
-		out = io.BytesIO()
-		im.save(out, format='PNG')
-		out.seek(0)
-		im.close()
-		yield layer_i, out
+		yield int(layer_i), _render_layer(raw_image, palette, layer)

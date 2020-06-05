@@ -32,30 +32,16 @@ utils.init_app(app)
 
 @app.route('/host-session/<dodo_code>')
 def host_session(dodo_code):
-	try:
-		return acnh.dodo.search_dodo_code(dodo_code)
-	except acnh.dodo.UnknownDodoCodeError as ex:
-		return ex.to_dict(), HTTPStatus.NOT_FOUND
-	except acnh.dodo.InvalidDodoCodeError as ex:
-		return ex.to_dict(), HTTPStatus.BAD_REQUEST
+	return acnh.dodo.search_dodo_code(dodo_code)
 
-@app.route('/design/<design_code:design_code>')
+@app.route('/design/<design_code>')
 def design(design_code):
-	try:
-		return acnh.designs.download_design(design_code)
-	except acnh.designs.UnknownDesignCodeError as ex:
-		return ex.to_dict(), HTTPStatus.NOT_FOUND
-	except acnh.designs.InvalidDesignCodeError as ex:
-		return ex.to_dict(), HTTPStatus.BAD_REQUEST
+	return acnh.designs.download_design(design_code)
 
-@app.route('/design/<design_code:design_code>.tar')
+@app.route('/design/<design_code>.tar')
 def design_archive(design_code):
-	resp = design(design_code)
-	if not isinstance(resp, dict):
-		# error
-		return resp
-
-	meta, body = resp['mMeta'], resp['mData']
+	data = acnh.designs.download_design(design_code)
+	meta, body = data['mMeta'], data['mData']
 
 	def gen():
 		tar = tarfile_stream.open(mode='w|')
@@ -68,6 +54,12 @@ def design_archive(design_code):
 		yield from tar.footer()
 
 	return current_app.response_class(gen(), mimetype='application/x-tar')
+
+@app.route('/design/<design_code>/<int:layer>.png')
+def design_layer(design_code, layer):
+	data = acnh.designs.download_design(design_code)
+	meta, body = data['mMeta'], data['mData']
+	return current_app.response_class(acnh.design_render.render_layer(body, layer), mimetype='image/png')
 
 with open('openapi.json') as f:
 	open_api_spec = json.load(f)
