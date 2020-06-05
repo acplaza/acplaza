@@ -41,10 +41,12 @@ with open('/path/to/<guid>.dat', 'rb') as f:
 	print('BAAS password:', f.read(40).decode('ascii'))
 ```
 
-8. Lastly you will need to use [nxdumptool](https://github.com/DarkMatterCore/nxdumptool/releases) to dump your AC:NH
-   ticket. You must have the eShop version to proceed. Game cards are not supported. Use nxdumptool to dump the
-   base ticket (not the update ticket) for the game.
-9. Edit config.toml according to the information and files you retrieved.
+8. Use [nxdumptool](https://github.com/DarkMatterCore/nxdumptool/releases) to dump your AC:NH ticket.
+   You must have the eShop version to proceed. Game cards are not supported. 
+   Use nxdumptool to dump the base ticket (not the update ticket) for the game.
+9. Install these FS patches on your switch in order to disable CA Verficiation. https://github.com/misson20000/exefs_patches/tree/master/atmosphere/exefs_patches/disable_ca_verification
+10. Set up a web proxy such as Charles. Configure your Switch's network settings to proxy through your web proxying software. 11. Intercept your Switch's request to https://api.hac.lp1.acbaa.srv.nintendo.net/api/v1/auth_token. The request body contains a msgpack encoded dictionary like this: `{'id': 1311768467445894639, 'password': '64 characters here'}`. This user ID and password goes in the config as `acnh-user-id` and `acnh-password`.
+12. Edit config.toml according to the information and files you retrieved.
 
 ## License
 
