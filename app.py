@@ -65,13 +65,14 @@ def maybe_scale(image):
 def design_archive(design_code):
 	data = acnh.designs.download_design(design_code)
 	meta, body = data['mMeta'], data['mData']
+	design_name = meta['mMtDNm']  # hungarian notation + camel case + abbreviations DO NOT mix well
 
 	def gen():
 		tar = tarfile_stream.open(mode='w|')
 		yield from tar.header()
 
 		for i, image in acnh.design_render.render_layers(body):
-			tarinfo = tarfile_stream.TarInfo(f'{i}.png')
+			tarinfo = tarfile_stream.TarInfo(f'{design_name}/{i}.png')
 			tarinfo.mtime = datetime.datetime.utcnow().timestamp()
 
 			image = maybe_scale(image)
