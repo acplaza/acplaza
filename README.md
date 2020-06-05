@@ -59,3 +59,4 @@ See that file for details.
 - acnh/design_render.py is provided by @nickwanninger under the AGPLv3 or later license.
 - tarfile_stream.py is based on the Python standard library tarfile.py and used under the MIT License.
 See that file for details.
+- xbrz/ is based on code provided by Zenju under the GPLv3 license.
