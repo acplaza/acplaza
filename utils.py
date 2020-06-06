@@ -1,4 +1,5 @@
 import base64
+import datetime as dt
 import json
 
 import flask.json
@@ -7,6 +8,7 @@ from werkzeug.exceptions import HTTPException
 from acnh.common import ACNHError
 
 def init_app(app):
+	app.config['JSON_SORT_KEYS'] = False
 	app.json_encoder = CustomJSONEncoder
 	app.errorhandler(ACNHError)(handle_acnh_exception)
 	app.errorhandler(HTTPException)(handle_exception)
@@ -19,6 +21,8 @@ class CustomJSONEncoder(flask.json.JSONEncoder):
 	def default(self, x):
 		if isinstance(x, bytes):
 			return base64.b64encode(x).decode()
+		if isinstance(x, dt.datetime):
+			return x.replace(tzinfo=dt.timezone.utc).isoformat()
 		return super().default(x)
 
 def handle_acnh_exception(ex):

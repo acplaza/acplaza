@@ -15,12 +15,12 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with ACNH API. If not, see <https://www.gnu.org/licenses/>.
 
-import datetime
+import datetime as dt
 import io
 import json
 from http import HTTPStatus
 
-from flask import Flask, jsonify, current_app, request, stream_with_context
+from flask import Flask, jsonify, current_app, request, stream_with_context, url_for
 
 import acnh.dodo
 import acnh.designs
@@ -30,6 +30,7 @@ import re
 import tarfile_stream
 import xbrz
 from acnh.common import ACNHError, InvalidFormatError
+from acnh.designs import DesignError
 
 app = Flask(__name__)
 utils.init_app(app)
@@ -37,7 +38,6 @@ utils.init_app(app)
 class InvalidScaleFactorError(InvalidFormatError):
 	message = 'invalid scale factor'
 	code = 23
-	valid_scale_factors = range(1, 7)
 	regex = re.compile('[123456]')
 
 @app.route('/host-session/<dodo_code>')
@@ -73,7 +73,7 @@ def design_archive(design_code):
 
 		for i, image in acnh.design_render.render_layers(body):
 			tarinfo = tarfile_stream.TarInfo(f'{design_name}/{i}.png')
-			tarinfo.mtime = datetime.datetime.utcnow().timestamp()
+			tarinfo.mtime = dt.datetime.utcnow().timestamp()
 
 			image = maybe_scale(image)
 			out = io.BytesIO()
@@ -107,6 +107,32 @@ def design_layer(design_code, layer):
 		'Content-Length': length,
 		'Content-Disposition': f"inline; filename*=utf-8''{design_name}-{layer}.png"
 	})
+
+class InvalidProArgument(DesignError, InvalidFormatError):
+	message = 'invalid value for pro argument'
+	code = 25
+	regex = re.compile('[01]|(?:false|true)|[ft]', re.IGNORECASE)
+
+@app.route('/designs/<creator_id>')
+def list_designs(creator_id):
+	offset = int(request.args.get('offset', 0))
+	# while we *could* just set this to 120 to get all designs in one shot, I don't wanna get banned
+	limit = 40
+	offset = limit * offset//limit
+	pro = request.args.get('pro', 'false')
+	InvalidProArgument.validate(pro)
+
+	page = acnh.designs.list_designs(creator_id, offset=offset, limit=limit, pro=pro)
+	page['creator_name'] = page['headers'][0]['design_player_name']
+	page['creator_id'] = page['headers'][0]['design_player_id']
+
+	for hdr in page['headers']:
+		hdr['design_code'] = design_codeacnh.designs.design_code(hdr['id'])
+		del hdr['meta'], hdr['body'], hdr['design_player_name'], hdr['design_player_id'], hdr['digest']
+		for dt_key in 'created_at', 'updated_at':
+			hdr[dt_key] = dt.datetime.utcfromtimestamp(hdr[dt_key])
+
+	return page
 
 if __name__ == '__main__':
 	app.run(use_reloader=True)

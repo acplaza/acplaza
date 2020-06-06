@@ -16,47 +16,80 @@
 import re
 import urllib.parse
 from http import HTTPStatus
+from functools import wraps
 
 import msgpack
 from nintendo.common.http import HTTPRequest
 
 from .common import config, authenticate_aauth, authenticate_acnh, ACNHError, InvalidFormatError, ACNHClient
 
-class DesignCodeError(ACNHError):
+class DesignError(ACNHError):
 	pass
 
-class UnknownDesignCodeError(DesignCodeError):
+class UnknownDesignCodeError(DesignError):
 	code = 21
 	message = 'unknown design code'
-	http_status = HTTPStatus.BAD_REQUEST
+	http_status = HTTPStatus.NOT_FOUND
 
 _design_code_alphabet = '0123456789BCDFGHJKLMNPQRSTVWXY'
 DESIGN_CODE_ALPHABET = {c: val for val, c in enumerate(_design_code_alphabet)}
 
-class InvalidDesignCodeError(DesignCodeError, InvalidFormatError):
+class InvalidDesignCodeError(DesignError, InvalidFormatError):
 	code = 22
 	message = 'invalid design code'
 	_design_code_segment = f'[{_design_code_alphabet}]{{4}}'
 	regex = re.compile('-'.join([_design_code_segment] * 3))
 	del _design_code_segment
 
-def design_id(pattern_code):
-	code = pattern_code.replace('-', '')
+class UnknownCreatorIdError(DesignError):
+	code = 23
+	message = 'unknown creator ID'
+	http_status = HTTPStatus.NOT_FOUND
+
+class InvalidCreatorIdError(DesignError, InvalidFormatError):
+	code = 24
+	message = 'invalid creator ID'
+	regex = re.compile('\d{4}-?\d{4}-?\d{4}', re.ASCII)
+
+def design_id(design_code):
+	code = design_code.replace('-', '')
 	n = 0
 	for c in code:
 		n *= 30
-		try:
-			n += DESIGN_CODE_ALPHABET[c]
-		except KeyError:
-			raise InvalidDesignCodeError
+		n += DESIGN_CODE_ALPHABET[c]
 	return n
 
-def _download_design(token, design_code):
-	acnh = ACNHClient(token)
+def design_code(design_id):
+	digits = []
+	group_count = 0
+	while design_id:
+		design_id, digit = divmod(design_id, 30)
+		digits.append(_design_code_alphabet[digit])
+		group_count += 1
+		if group_count == 4:
+			digits.append('-')
+			group_count = 0
+
+	digits.pop()
+	return ''.join(reversed(digits))
+
+def authenticated(func):
+	@wraps(func)
+	def wrapped(*args, **kwargs):
+		_, id_token = authenticate_aauth()
+		token = authenticate_acnh(id_token)
+		acnh = ACNHClient(token)
+		return func(acnh, *args, **kwargs)
+	return wrapped
+
+@authenticated
+def download_design(acnh, design_code):
+	InvalidDesignCodeError.validate(design_code)
+
 	resp = acnh.request('GET', '/api/v2/designs', params={
-		'offset': '0',
-		'limit': '40',
-		'q[design_id]': str(design_id(design_code)),
+		'offset': 0,
+		'limit': 1,
+		'q[design_id]': design_id(design_code),
 	})
 	resp = msgpack.loads(resp.content)
 
@@ -70,9 +103,16 @@ def _download_design(token, design_code):
 	resp = acnh.request('GET', url.path + '?' + url.query)
 	return msgpack.loads(resp.content)
 
-def download_design(design_code):
-	InvalidDesignCodeError.validate(design_code)
-
-	_, id_token = authenticate_aauth()
-	token = authenticate_acnh(id_token)
-	return _download_design(token, design_code)
+@authenticated
+def list_designs(acnh, creator_id: str, *, offset, limit, pro: bool):
+	InvalidCreatorIdError.validate(creator_id)
+	creator_id = int(creator_id.replace('-', ''))
+	resp = acnh.request('GET', '/api/v2/designs', params={
+		'offset': offset,
+		'limit': limit,
+		'q[player_id]': creator_id,
+	})
+	resp = msgpack.loads(resp.content)
+	if not resp['total']:
+		raise UnknownCreatorIdError
+	return resp

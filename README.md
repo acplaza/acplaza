@@ -23,6 +23,12 @@ and creator information. Binary data (`resp.mData.mData`) is base64 encoded.
 Returns a tar archive containing a PNG render of each layer of the given custom design code.
 - /design/:custom-design-code/:layer.png
 Returns a PNG render of the specified layer.
+- /designs/:creator-id Lists the designs posted by the given creator ID. Parameters:
+  - pro: true/false. whether to list the creator's Pro designs only. If false only normal designs will be listed.
+  - offset: 0-80. What offset to use.
+  - For now, the limit is hardcoded to 40 to emulate a Switch and reduce ban risk. Later this restriction may be lifted.
+  - The offset is also rounded down to the nearest Cmultiple of 40 for the same reason.
+  - Pass offset=40 to get the next page, or offset=80 to get page 3. There is no page 4.
 
 ## Setup
 
