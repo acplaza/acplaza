@@ -26,22 +26,19 @@ import acnh.dodo
 import acnh.designs
 import acnh.design_render
 import utils
+import re
 import tarfile_stream
 import xbrz
-from acnh.common import InvalidFormatError
+from acnh.common import ACNHError, InvalidFormatError
 
 app = Flask(__name__)
 utils.init_app(app)
 
 class InvalidScaleFactorError(InvalidFormatError):
-	error = 'invalid scale factor'
-	error_code = 23
+	message = 'invalid scale factor'
+	code = 23
 	valid_scale_factors = range(1, 7)
-
-	def to_dict(self):
-		d = super().to_dict()
-		d['valid_scale_factors'] = f'{self.range.start}–{self.range.stop - 1}'
-		return d
+	regex = re.compile('[123456]')
 
 @app.route('/host-session/<dodo_code>')
 def host_session(dodo_code):
@@ -51,18 +48,21 @@ def host_session(dodo_code):
 def design(design_code):
 	return acnh.designs.download_design(design_code)
 
-def maybe_scale(image):
-	try:
-		scale_factor = int(request.args.get('scale', 1))
-	except ValueError:
-		raise InvalidScaleFactorError
+def get_scale_factor():
+	scale_factor = request.args.get('scale', '1')
+	InvalidScaleFactorError.validate(scale_factor)
+	return int(scale_factor)
 
-	if scale_factor > 1:
-		image = xbrz.scale_pil(image, scale_factor)
-	return image
+def maybe_scale(image):
+	scale_factor = get_scale_factor()
+	if scale_factor == 1:
+		return image
+
+	return xbrz.scale_pil(image, scale_factor)
 
 @app.route('/design/<design_code>.tar')
 def design_archive(design_code):
+	get_scale_factor()  # do the validation now since apparently it doesn't work in the generator
 	data = acnh.designs.download_design(design_code)
 	meta, body = data['mMeta'], data['mData']
 	design_name = meta['mMtDNm']  # hungarian notation + camel case + abbreviations DO NOT mix well
