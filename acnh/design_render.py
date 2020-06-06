@@ -13,7 +13,6 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with ACNH API. If not, see <https://www.gnu.org/licenses/>.
 
-import io
 from PIL import Image
 
 from .common import ACNHError
@@ -44,7 +43,7 @@ def gen_palette(raw_image):
 	palette[0xF] = (0, 0, 0, 0)
 	return palette
 
-def _render_layer(raw_image, palette, layer) -> io.BytesIO:
+def _render_layer(raw_image, palette, layer) -> Image.Image:
 	palette = gen_palette(raw_image)
 
 	# create a new image for this layer
@@ -68,13 +67,9 @@ def _render_layer(raw_image, palette, layer) -> io.BytesIO:
 			y = (pixi + offset) >> 5
 			pixels[x, y] = palette[nibble]
 
-	out = io.BytesIO()
-	im.save(out, format='PNG')
-	out.seek(0)
-	im.close()
-	return out
+	return im
 
-def render_layer(raw_image, layer_i: int) -> io.BytesIO:
+def render_layer(raw_image, layer_i: int) -> Image.Image:
 	try:
 		layer = raw_image['mData'][str(layer_i)]
 	except KeyError:

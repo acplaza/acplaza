@@ -4,13 +4,23 @@ This is a REST API for programmatic access to Dodo Codes and Custom Designs.
 
 ## Endpoints
 
+### Dodo Codes
+
 - /host-session/:dodo-code
 Returns info about an active island hosting session.
+
+### Custom Designs
+
+These endpoints take an optional `scale` parameter, an integer 1–6 which scales the image
+using what is believed to be the same algorithm that the game uses.
+
 - /design/:custom-design-code
 Returns the unprocessed response from Nintendo's servers. Contains the raw data for the image along with its palette
 and creator information. Binary data (`resp.mData.mData`) is base64 encoded.
 - /design/:custom-design-code.tar
 Returns a tar archive containing a PNG render of each layer of the given custom design code.
+- /design/:custom-design-code/:layer.png
+Returns a PNG render of the specified layer.
 
 ## Setup
 
