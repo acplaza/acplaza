@@ -13,7 +13,7 @@ Returns info about an active island hosting session.
 
 ### Custom Designs
 
-The /design endpoints take an optional `scale` parameter, an integer 1–6 which scales the image
+The /design endpoints take an optional `scale` query parameter, an integer 1–6 which scales the image
 using what is believed to be the same algorithm that the game uses.
 
 - /design/:custom-design-code
@@ -23,7 +23,7 @@ and creator information. Binary data (`resp.mData.mData`) is base64 encoded.
 Returns a tar archive containing a PNG render of each layer of the given custom design code.
 - /design/:custom-design-code/:layer.png
 Returns a PNG render of the specified layer.
-- /designs/:creator-id Lists the designs posted by the given creator ID. Parameters:
+- /designs/:creator-id Lists the designs posted by the given creator ID. Query parameters:
   - pro: true/false. whether to list the creator's Pro designs only. If false only normal designs will be listed.
   - offset: 0-80. What offset to use.
   - For now, the limit is hardcoded to 40 to emulate a Switch and reduce ban risk. Later this restriction may be lifted.
