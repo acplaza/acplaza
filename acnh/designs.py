@@ -70,8 +70,10 @@ def design_code(design_id):
 			digits.append('-')
 			group_count = 0
 
-	digits.pop()
-	return ''.join(reversed(digits))
+	if digits[-1] == '-':
+		digits.pop()
+
+	return ''.join(reversed(digits)).zfill(4 * 3 + 2)
 
 def authenticated(func):
 	@wraps(func)
