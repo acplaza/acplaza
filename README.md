@@ -1,6 +1,8 @@
 # ACNH API
 
-This is a REST API for programmatic access to Dodo Codes and Custom Designs.
+This is a REST API for programmatic access to Dodo Codes and Custom Designs. My instance is available at:
+- https://acnh-api.ashitty.website
+- http://acnhok4pb2e6jwy2khjollqznnkrqxpt5toaknjrqdfeqir3iqhyl6ad.onion/
 
 ## Endpoints
 
