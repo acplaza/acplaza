@@ -178,9 +178,9 @@ double distYCbCrBuffered(uint32_t pix1, uint32_t pix2)
 
         for (uint32_t i = 0; i < 256 * 256 * 256; ++i) //startup time: 114 ms on Intel Core i5 (four cores)
         {
-            const int r_diff = static_cast<signed char>(getByte<2>(i)) * 2;
-            const int g_diff = static_cast<signed char>(getByte<1>(i)) * 2;
-            const int b_diff = static_cast<signed char>(getByte<0>(i)) * 2;
+            const int r_diff = static_cast<signed char>(getByte(i, 2)) * 2;
+            const int g_diff = static_cast<signed char>(getByte(i, 1)) * 2;
+            const int b_diff = static_cast<signed char>(getByte(i, 0)) * 2;
 
             const double k_b = 0.0593; //ITU-R BT.2020 conversion
             const double k_r = 0.2627; //
@@ -1263,10 +1263,10 @@ void xbrz_rgba_to_argb(uint32_t* buf, size_t size)
     unsigned char a, r, g, b;
     for (int i = 0; i < size; i++)
     {
-        a = getByte<0>(buf[i]);
-        r = getByte<3>(buf[i]);
-        g = getByte<2>(buf[i]);
-        b = getByte<1>(buf[i]);
+        a = getByte(buf[i], 0);
+        r = getByte(buf[i], 3);
+        g = getByte(buf[i], 2);
+        b = getByte(buf[i], 1);
         buf[i] = makePixel(a, r, g, b);
     }
 }

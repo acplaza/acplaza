@@ -19,6 +19,8 @@ and eShop obtained copy of Animal Crossing: New Horizons.
 If you're buying the game just for this API, it's recommended to use a different Nintendo account than the one
 you play Animal Crossing on normally, so that the API can be used while you're playing.
 
+You'll also need to compile the xBRZ scaling library. Don't worry, it has no deps. Just run `make -C xbrz`.
+
 ### Obtaining your credentials
 
 1. Use [Lockpick_RCM](https://github.com/shchmue/Lockpick_RCM/releases)

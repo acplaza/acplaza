@@ -14,13 +14,12 @@
 
 namespace xbrz
 {
-template <uint32_t N> inline
-unsigned char getByte(uint32_t val) { return static_cast<unsigned char>((val >> (8 * N)) & 0xff); }
+inline unsigned char getByte(uint32_t val, unsigned char i) { return static_cast<unsigned char>((val >> (8 * i)) & 0xff); }
 
-inline unsigned char getAlpha(uint32_t pix) { return getByte<3>(pix); }
-inline unsigned char getRed  (uint32_t pix) { return getByte<2>(pix); }
-inline unsigned char getGreen(uint32_t pix) { return getByte<1>(pix); }
-inline unsigned char getBlue (uint32_t pix) { return getByte<0>(pix); }
+inline unsigned char getAlpha(uint32_t pix) { return getByte(pix, 3); }
+inline unsigned char getRed  (uint32_t pix) { return getByte(pix, 2); }
+inline unsigned char getGreen(uint32_t pix) { return getByte(pix, 1); }
+inline unsigned char getBlue (uint32_t pix) { return getByte(pix, 0); }
 
 inline uint32_t makePixel(unsigned char a, unsigned char r, unsigned char g, unsigned char b) { return (a << 24) | (r << 16) | (g << 8) | b; }
 inline uint32_t makePixel(                 unsigned char r, unsigned char g, unsigned char b) { return             (r << 16) | (g << 8) | b; }
