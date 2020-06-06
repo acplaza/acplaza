@@ -85,13 +85,11 @@ def authenticated(func):
 	return wrapped
 
 @authenticated
-def download_design(acnh, design_code):
-	InvalidDesignCodeError.validate(design_code)
-
+def download_design(acnh, design_id):
 	resp = acnh.request('GET', '/api/v2/designs', params={
 		'offset': 0,
 		'limit': 1,
-		'q[design_id]': design_id(design_code),
+		'q[design_id]': design_id,
 	})
 	resp = msgpack.loads(resp.content)
 
@@ -106,15 +104,20 @@ def download_design(acnh, design_code):
 	return msgpack.loads(resp.content)
 
 @authenticated
-def list_designs(acnh, creator_id: str, *, offset, limit, pro: bool):
-	InvalidCreatorIdError.validate(creator_id)
-	creator_id = int(creator_id.replace('-', ''))
+def list_designs(acnh, creator_id: int, *, pro: bool):
 	resp = acnh.request('GET', '/api/v2/designs', params={
-		'offset': offset,
-		'limit': limit,
+		'offset': 0,
+		'limit': 120,
 		'q[player_id]': creator_id,
+		'with_binaries': 'false',
 	})
 	resp = msgpack.loads(resp.content)
 	if not resp['total']:
 		raise UnknownCreatorIdError
 	return resp
+
+@authenticated
+def delete_design(acnh, design_id):
+	resp = acnh.request('DELETE', '/api/v1/designs/' + str(design_id))
+	if resp.status_code == 404:
+		raise UnknownDesignCodeError

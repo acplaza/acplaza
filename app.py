@@ -46,7 +46,8 @@ def host_session(dodo_code):
 
 @app.route('/design/<design_code>')
 def design(design_code):
-	return acnh.designs.download_design(design_code)
+	InvalidDesignCodeError.validate(design_code)
+	return acnh.designs.download_design(acnh.designs.design_id(design_code))
 
 def get_scale_factor():
 	scale_factor = request.args.get('scale', '1')
@@ -62,6 +63,7 @@ def maybe_scale(image):
 
 @app.route('/design/<design_code>.tar')
 def design_archive(design_code):
+	InvalidDesignCodeError.validate(design_code)
 	get_scale_factor()  # do the validation now since apparently it doesn't work in the generator
 	data = acnh.designs.download_design(design_code)
 	meta, body = data['mMeta'], data['mData']
@@ -93,7 +95,8 @@ def design_archive(design_code):
 
 @app.route('/design/<design_code>/<int:layer>.png')
 def design_layer(design_code, layer):
-	data = acnh.designs.download_design(design_code)
+	InvalidDesignCodeError.validate(design_code)
+	data = acnh.designs.download_design(acnh.designs.design_id(design_code))
 	meta, body = data['mMeta'], data['mData']
 	design_name = meta['mMtDNm']
 
@@ -115,10 +118,8 @@ class InvalidProArgument(DesignError, InvalidFormatError):
 
 @app.route('/designs/<creator_id>')
 def list_designs(creator_id):
-	offset = int(request.args.get('offset', 0))
-	# while we *could* just set this to 120 to get all designs in one shot, I don't wanna get banned
-	limit = 40
-	offset = limit * offset//limit
+	InvalidCreatorIdError.validate(creator_id)
+	creator_id = int(creator_id.replace('-', ''))
 	pro = request.args.get('pro', 'false')
 	InvalidProArgument.validate(pro)
 
