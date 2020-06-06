@@ -85,12 +85,17 @@ def design_archive(design_code):
 
 		yield from tar.footer()
 
-	return current_app.response_class(stream_with_context(gen()), mimetype='application/x-tar')
+	return current_app.response_class(
+		stream_with_context(gen()),
+		mimetype='application/x-tar',
+		headers={'Content-Disposition': f"attachment; filename*=utf-8''{design_name}.tar"},
+	)
 
 @app.route('/design/<design_code>/<int:layer>.png')
 def design_layer(design_code, layer):
 	data = acnh.designs.download_design(design_code)
 	meta, body = data['mMeta'], data['mData']
+	design_name = meta['mMtDNm']
 
 	rendered = acnh.design_render.render_layer(body, layer)
 	rendered = maybe_scale(rendered)
@@ -98,7 +103,10 @@ def design_layer(design_code, layer):
 	rendered.save(out, format='PNG')
 	length = out.tell()
 	out.seek(0)
-	return current_app.response_class(out, mimetype='image/png', headers={'Content-Length': length})
+	return current_app.response_class(out, mimetype='image/png', headers={
+		'Content-Length': length,
+		'Content-Disposition': f"inline; filename*=utf-8''{design_name}-{layer}.png"
+	})
 
 with open('openapi.json') as f:
 	open_api_spec = json.load(f)
