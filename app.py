@@ -108,12 +108,5 @@ def design_layer(design_code, layer):
 		'Content-Disposition': f"inline; filename*=utf-8''{design_name}-{layer}.png"
 	})
 
-with open('openapi.json') as f:
-	open_api_spec = json.load(f)
-
-@app.route('/')
-def api_spec():
-	return open_api_spec
-
 if __name__ == '__main__':
 	app.run(use_reloader=True)
