@@ -108,6 +108,9 @@ class ACNHClient:
 		'Host': urllib.parse.urlparse(BASE).netloc,
 		'Accept': '*/*',
 	}
+	# note: OPTIONS can technically have an request body, but it's not specified what that means,
+	# and ACNH doesn't use OPTIONS anyway
+	REQUEST_METHODS_WITH_BODIES = frozenset({'POST', 'PUT'})
 
 	def __init__(self, token):
 		self.token = token
@@ -119,7 +122,7 @@ class ACNHClient:
 
 	def request(self, method, path, **kwargs):
 		headers = {}
-		if method != 'GET':
+		if method in self.REQUEST_METHODS_WITH_BODIES:
 			headers['Content-Type'] = 'application/x-msgpack'
 		return self.session.request(method, self.BASE + path, headers=headers, **kwargs)
 
