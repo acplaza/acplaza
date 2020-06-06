@@ -115,12 +115,13 @@ class ACNHClient:
 		self.session.headers.clear()
 		self.session.headers.update(self.HEADERS)
 		self.session.headers['Authorization'] = 'Bearer ' + token
+		self.session.verify = 'data/nintendo-ca.crt'
 
 	def request(self, method, path, **kwargs):
 		headers = {}
 		if method != 'GET':
 			headers['Content-Type'] = 'application/x-msgpack'
-		return self.session.request(method, self.BASE + path, verify=False, headers=headers, **kwargs)
+		return self.session.request(method, self.BASE + path, headers=headers, **kwargs)
 
 def authenticate_aauth():
 	dauth = DAuthClient(keys)

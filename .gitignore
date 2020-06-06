@@ -1,4 +1,5 @@
 /config.toml
 __pycache__/
 *.png
+*.tar
 *.so
