@@ -1,7 +1,8 @@
 // ****************************************************************************
 // * This file is part of the xBRZ project. It is distributed under           *
 // * GNU General Public License: https://www.gnu.org/licenses/gpl-3.0         *
-// * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved          *
+// * © Zenju (zenju AT gmx DOT de) - All Rights Reserved                      *
+// * © io mintz <io@mintz.cc> - All Rights Reserved                           *
 // ****************************************************************************
 
 #ifndef XBRZ_TOOLS_H_825480175091875
