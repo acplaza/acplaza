@@ -127,7 +127,7 @@ def list_designs(creator_id):
 	page['creator_id'] = page['headers'][0]['design_player_id']
 
 	for hdr in page['headers']:
-		hdr['design_code'] = design_codeacnh.designs.design_code(hdr['id'])
+		hdr['design_code'] = acnh.designs.design_code(hdr['id'])
 		del hdr['meta'], hdr['body'], hdr['design_player_name'], hdr['design_player_id'], hdr['digest']
 		for dt_key in 'created_at', 'updated_at':
 			hdr[dt_key] = dt.datetime.utcfromtimestamp(hdr[dt_key])
