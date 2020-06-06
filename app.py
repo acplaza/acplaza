@@ -59,7 +59,7 @@ def maybe_scale(image):
 	if scale_factor == 1:
 		return image
 
-	return xbrz.scale_pil(image, scale_factor)
+	return xbrz.scale_wand(image, scale_factor)
 
 @app.route('/design/<design_code>.tar')
 def design_archive(design_code):
@@ -79,7 +79,8 @@ def design_archive(design_code):
 
 			image = maybe_scale(image)
 			out = io.BytesIO()
-			image.save(out, format='PNG')
+			with image.convert('png') as c:
+				c.save(file=out)
 			tarinfo.size = out.tell()
 			out.seek(0)
 
@@ -103,7 +104,8 @@ def design_layer(design_code, layer):
 	rendered = acnh.design_render.render_layer(body, layer)
 	rendered = maybe_scale(rendered)
 	out = io.BytesIO()
-	rendered.save(out, format='PNG')
+	with rendered.convert('png') as c:
+		c.save(out)
 	length = out.tell()
 	out.seek(0)
 	return current_app.response_class(out, mimetype='image/png', headers={

@@ -1,5 +1,5 @@
 import ctypes
-import PIL.Image
+import wand.image
 from enum import IntEnum
 
 class ColorFormat(IntEnum):  # from high bits -> low bits, 8 bit per channel
@@ -35,8 +35,14 @@ def scale(img, factor, width, height, color_format: ColorFormat):
 
 	return scaled
 
-def scale_pil(img: PIL.Image.Image, factor):
-	# Yes, I realize that xBRZ speaks ARGB while PIL only speaks RGBA.
-	# However, it seems to work fine without conversion, for some reason??
-	scaled = scale(bytearray(img.tobytes()), factor, img.width, img.height, ColorFormat.__members__[img.mode])
-	return PIL.Image.frombytes('RGBA', (factor * img.size[0], factor * img.size[1]), scaled)
+def scale_wand(img: wand.image.Image, factor):
+	scaled_pixels = scale(
+		bytearray(img.export_pixels(channel_map='RGBA')),
+		factor,
+		img.width,
+		img.height,
+		ColorFormat.RGBA,
+	)
+	scaled = wand.image.Image(width=factor * img.width, height=factor * img.height)
+	scaled.import_pixels(channel_map='RGBA', data=bytearray(scaled_pixels))
+	return scaled

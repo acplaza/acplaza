@@ -13,7 +13,8 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with ACNH API. If not, see <https://www.gnu.org/licenses/>.
 
-from PIL import Image
+import io
+import wand.image
 
 from .common import ACNHError
 
@@ -34,42 +35,30 @@ WIDTH, HEIGHT = SIZE
 def gen_palette(raw_image):
 	palette = {}
 	for ind, color in raw_image['mPalette'].items():
-		r = (color >> 24) & 0xFF
-		g = (color >> 16) & 0xFF
-		b = (color >>  8) & 0xFF
-		a = (color >>  0) & 0xFF
-		palette[int(ind)] = (r, g, b, a)
+		palette[int(ind)] = color
 	# implicit transparent
 	palette[0xF] = (0, 0, 0, 0)
 	return palette
 
-def _render_layer(raw_image, palette, layer) -> Image.Image:
+def _render_layer(raw_image, palette, layer) -> wand.image.Image:
 	palette = gen_palette(raw_image)
 
-	# create a new image for this layer
-	im = Image.new('RGBA', SIZE)
+	im = wand.image.Image(width=WIDTH, height=HEIGHT)
 
-	# grab them pixels
-	pixels = im.load()
+	out = io.BytesIO()
 
 	for pixi, byte in zip(range(0, WIDTH * HEIGHT, 2), layer):
 		b1 = byte & 0xF
 		b2 = (byte >> 4) & 0xF
 
-		# each byte of input supplies two pixels, so use `enumerate` to
-		# get an offset so we handle both pixels using one block of code
-		# woot! no code duplication!
-		for offset, nibble in enumerate([b1, b2]):
-			# calculate the x and y using a smarter method than division (1 cycle vs 30)
-			# you could divide and mod by HEIGHT-1 here instead, but this is ***FASTER***
-			# NOTE: dependent on HEIGHT being a power of two
-			x = (pixi + offset) & (HEIGHT - 1)
-			y = (pixi + offset) >> 5
-			pixels[x, y] = palette[nibble]
+		for nibble in b1, b2:
+			out.write(palette[nibble].to_bytes(4, byteorder='big'))
 
+	out.seek(0)
+	im.import_pixels(channel_map='RGBA', data=out.getbuffer())
 	return im
 
-def render_layer(raw_image, layer_i: int) -> Image.Image:
+def render_layer(raw_image, layer_i: int) -> wand.image.Image:
 	try:
 		layer = raw_image['mData'][str(layer_i)]
 	except KeyError:
