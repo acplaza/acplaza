@@ -13,7 +13,7 @@ Returns info about an active island hosting session.
 
 ### Custom Designs
 
-These endpoints take an optional `scale` parameter, an integer 1–6 which scales the image
+The /design endpoints take an optional `scale` parameter, an integer 1–6 which scales the image
 using what is believed to be the same algorithm that the game uses.
 
 - /design/:custom-design-code
