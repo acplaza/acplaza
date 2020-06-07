@@ -1,3 +1,5 @@
+# © 2020 io mintz <io@mintz.cc>
+
 import ctypes
 import wand.image
 from enum import IntEnum

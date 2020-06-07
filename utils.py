@@ -1,3 +1,5 @@
+# © 2020 io mintz <io@mintz.cc>
+
 import base64
 import datetime as dt
 import json
