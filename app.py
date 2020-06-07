@@ -44,14 +44,9 @@ class InvalidScaleFactorError(InvalidFormatError):
 	regex = re.compile('[123456]')
 
 @app.route('/host-session/<dodo_code>')
-@limiter.limit('1 per 4s')
+@limiter.limit('1 per 4 seconds')
 def host_session(dodo_code):
 	return acnh.dodo.search_dodo_code(dodo_code)
-
-@app.route('/foo')
-@limiter.limit('1 per 5 seconds')
-def foo():
-	return 'ok'
 
 @app.route('/design/<design_code>')
 @limiter.limit('5 per second')
