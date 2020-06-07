@@ -21,6 +21,8 @@ import json
 from http import HTTPStatus
 
 from flask import Flask, jsonify, current_app, request, stream_with_context, url_for
+from flask_limiter import Limiter
+from flask_limiter.util import get_ipaddr
 
 import acnh.dodo
 import acnh.designs
@@ -30,10 +32,11 @@ import re
 import tarfile_stream
 import xbrz
 from acnh.common import ACNHError, InvalidFormatError
-from acnh.designs import DesignError
+from acnh.designs import DesignError, InvalidDesignCodeError
 
 app = Flask(__name__)
 utils.init_app(app)
+limiter = Limiter(app, key_func=get_ipaddr)
 
 class InvalidScaleFactorError(InvalidFormatError):
 	message = 'invalid scale factor'
@@ -41,10 +44,17 @@ class InvalidScaleFactorError(InvalidFormatError):
 	regex = re.compile('[123456]')
 
 @app.route('/host-session/<dodo_code>')
+@limiter.limit('1 per 4s')
 def host_session(dodo_code):
 	return acnh.dodo.search_dodo_code(dodo_code)
 
+@app.route('/foo')
+@limiter.limit('1 per 5 seconds')
+def foo():
+	return 'ok'
+
 @app.route('/design/<design_code>')
+@limiter.limit('5 per second')
 def design(design_code):
 	InvalidDesignCodeError.validate(design_code)
 	return acnh.designs.download_design(acnh.designs.design_id(design_code))
@@ -62,6 +72,7 @@ def maybe_scale(image):
 	return xbrz.scale_wand(image, scale_factor)
 
 @app.route('/design/<design_code>.tar')
+@limiter.limit('2 per 10 seconds')
 def design_archive(design_code):
 	InvalidDesignCodeError.validate(design_code)
 	get_scale_factor()  # do the validation now since apparently it doesn't work in the generator
@@ -95,6 +106,7 @@ def design_archive(design_code):
 	)
 
 @app.route('/design/<design_code>/<int:layer>.png')
+@limiter.limit('12 per 10 seconds')
 def design_layer(design_code, layer):
 	InvalidDesignCodeError.validate(design_code)
 	data = acnh.designs.download_design(acnh.designs.design_id(design_code))
@@ -119,6 +131,7 @@ class InvalidProArgument(DesignError, InvalidFormatError):
 	regex = re.compile('[01]|(?:false|true)|[ft]', re.IGNORECASE)
 
 @app.route('/designs/<creator_id>')
+@limiter.limit('5 per 1 seconds')
 def list_designs(creator_id):
 	InvalidCreatorIdError.validate(creator_id)
 	creator_id = int(creator_id.replace('-', ''))
