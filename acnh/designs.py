@@ -13,15 +13,16 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with ACNH API. If not, see <https://www.gnu.org/licenses/>.
 
+import io
 import re
 import urllib.parse
 from http import HTTPStatus
 from functools import wraps
 
 import msgpack
-from nintendo.common.http import HTTPRequest
 
 from .common import config, authenticate_aauth, authenticate_acnh, ACNHError, InvalidFormatError, ACNHClient
+from . import utils
 
 class DesignError(ACNHError):
 	pass
@@ -50,6 +51,15 @@ class InvalidCreatorIdError(DesignError, InvalidFormatError):
 	code = 24
 	message = 'invalid creator ID'
 	regex = re.compile('\d{4}-?\d{4}-?\d{4}', re.ASCII)
+
+# not an invalid format error because it's not constrainable to a regex
+class InvalidDesignError(DesignError):
+	code = 26
+	message = 'invalid design'
+
+class InvalidPaletteError(DesignError):
+	code = 27
+	message = 'limit 15 colors'
 
 def design_id(design_code):
 	code = design_code.replace('-', '')
@@ -117,7 +127,16 @@ def list_designs(acnh, creator_id: int, *, pro: bool):
 	return resp
 
 @authenticated
-def delete_design(acnh, design_id):
+def delete_design(acnh, design_id) -> None:
 	resp = acnh.request('DELETE', '/api/v1/designs/' + str(design_id))
-	if resp.status_code == 404:
+	if resp.status_code == HTTPStatus.NOT_FOUND:
 		raise UnknownDesignCodeError
+
+@authenticated
+def create_design(acnh, design_data) -> int:
+	"""create a design. returns the created design ID."""
+	resp = acnh.request('POST', '/api/v1/designs', data=msgpack.dumps(design_data))
+	if resp.status_code == HTTPStatus.BAD_REQUEST:
+		raise InvalidDesignError
+	data = msgpack.loads(resp.content)
+	return data['id']
