@@ -19,7 +19,7 @@ import re
 import tarfile_stream
 import xbrz
 from acnh.common import ACNHError, InvalidFormatError
-from acnh.designs import DesignError, InvalidDesignCodeError
+from acnh.designs.api import DesignError, InvalidDesignCodeError
 
 app = Flask(__name__)
 utils.init_app(app)

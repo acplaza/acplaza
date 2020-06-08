@@ -8,8 +8,8 @@ from functools import wraps
 
 import msgpack
 
-from .common import config, authenticate_aauth, authenticate_acnh, ACNHError, InvalidFormatError, ACNHClient
-from . import utils
+from ..common import config, authenticate_aauth, authenticate_acnh, ACNHError, InvalidFormatError, ACNHClient
+from .. import utils
 
 class DesignError(ACNHError):
 	pass
