@@ -71,13 +71,16 @@ with open('/path/to/<guid>.dat', 'rb') as f:
 
 ## License
 
-AGPLv3 or later, see LICENSE.md.
+GPLv3 or later, see LICENSE.md.
+
+**NOTE:** Unless you have cloned the repository before bc84e1a3d14711798c12b1e13a8f870aada857a4 and accepted the license there.
+In all other situations this library is **only** covered by the GPLv3, not he AGPLv3.
 
 ### Additional terms / credits
 
 - acnh/common.py is based on code provided by Yannik Marchand, used under the MIT License.
 See that file for details.
-- acnh/design_render.py is provided by @nickwanninger under the AGPLv3 or later license.
+- acnh/design_render.py is provided by @nickwanninger and copyright ownership has been transferred to me, io mintz.
 - tarfile_stream.py is based on the Python standard library tarfile.py and used under the MIT License.
 See that file for details.
 - xbrz/ is based on code provided by Zenju under the GPLv3 license. Some changes were made:
