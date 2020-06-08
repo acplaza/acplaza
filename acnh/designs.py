@@ -88,6 +88,7 @@ def download_design(acnh, design_id):
 		'limit': 1,
 		'q[design_id]': design_id,
 	})
+	resp.raise_for_status()
 	resp = msgpack.loads(resp.content)
 
 	if not resp['total']:
@@ -108,6 +109,7 @@ def list_designs(acnh, creator_id: int, *, pro: bool):
 		'q[player_id]': creator_id,
 		'with_binaries': 'false',
 	})
+	resp.raise_for_status()
 	resp = msgpack.loads(resp.content)
 	if not resp['total']:
 		raise UnknownCreatorIdError
