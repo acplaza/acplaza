@@ -25,7 +25,7 @@ def gen_palette(raw_image):
 	for ind, color in raw_image['mPalette'].items():
 		palette[int(ind)] = color
 	# implicit transparent
-	palette[0xF] = (0, 0, 0, 0)
+	palette[0xF] = 0
 	return palette
 
 def _render_layer(raw_image, palette, layer) -> wand.image.Image:
