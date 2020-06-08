@@ -74,9 +74,13 @@ with open('/path/to/<guid>.dat', 'rb') as f:
 GPLv3 or later, see LICENSE.md.
 
 **NOTE:** Unless you have cloned the repository before bc84e1a3d14711798c12b1e13a8f870aada857a4 and accepted the license there.
-In all other situations this library is **only** covered by the GPLv3, not he AGPLv3.
+In all other situations this library is **only** covered by the GPLv3, not the AGPLv3.
 
 ### Additional terms / credits
+
+- Most of the work of figuring out the image format was done by Josh#6734 and Cute#0313 on Discord.
+- Cute assisted with writing the image encoding code.
+- Ava#4982 figured out the Design Code alphanumeric format.
 
 - acnh/common.py is based on code provided by Yannik Marchand, used under the MIT License.
 See that file for details.
