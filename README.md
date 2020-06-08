@@ -64,9 +64,15 @@ with open('/path/to/<guid>.dat', 'rb') as f:
 8. Use [nxdumptool](https://github.com/DarkMatterCore/nxdumptool/releases) to dump your AC:NH ticket.
    You must have the eShop version to proceed. Game cards are not supported. 
    Use nxdumptool to dump the base ticket (not the update ticket) for the game.
-9. Install these FS patches on your switch in order to disable CA Verficiation. https://github.com/misson20000/exefs_patches/tree/master/atmosphere/exefs_patches/disable_ca_verification
-10. Set up a web proxy such as Charles. Configure your Switch's network settings to proxy through your web proxying software.
-11. In game, log on to the Custom Designs kiosk at the Able Sister's shop. Then intercept your Switch's request to https://api.hac.lp1.acbaa.srv.nintendo.net/api/v1/auth_token. The request body contains a msgpack encoded dictionary like this: `{'id': 1311768467445894639, 'password': '64 characters here'}`. This user ID and password goes in the config as `acnh-user-id` and `acnh-password`.
+9. Install these FS patches on your switch in order to disable CA Verification:
+   https://github.com/misson20000/exefs_patches/tree/master/atmosphere/exefs_patches/disable_ca_verification
+10. Set up a web proxy such as Charles.
+    Configure your Switch's network settings to proxy through your web proxying software.
+11. In game, log on to the Custom Designs kiosk at the Able Sister's shop.
+    Then intercept your Switch's request to https://api.hac.lp1.acbaa.srv.nintendo.net/api/v1/auth_token.
+    The request body contains a msgpack encoded dictionary like this:
+    `{'id': 1311768467445894639, 'password': '64 characters here'}`.
+    This user ID and password goes in the config as `acnh-user-id` and `acnh-password`.
 12. Edit config.toml according to the information and files you retrieved.
 
 ## License
@@ -74,7 +80,7 @@ with open('/path/to/<guid>.dat', 'rb') as f:
 GPLv3 or later, see LICENSE.md.
 
 **NOTE:** Unless you have cloned the repository before bc84e1a3d14711798c12b1e13a8f870aada857a4 and accepted the license there.
-In all other situations this library is **only** covered by the GPLv3, not the AGPLv3.
+In all other situations this repository is **only** covered by the GPLv3, not the AGPLv3.
 
 ### Additional terms / credits
 
@@ -83,13 +89,14 @@ In all other situations this library is **only** covered by the GPLv3, not the A
 - Ava#4982 figured out the Design Code alphanumeric format.
 
 - acnh/common.py is based on code provided by Yannik Marchand, used under the MIT License.
-See that file for details.
-- acnh/design_render.py is provided by @nickwanninger and copyright ownership has been transferred to me, io mintz.
+  See that file for details.
+- acnh/designs/render.py is based on code provided by @nickwanninger
+  and copyright ownership has been transferred to me, io mintz.
 - tarfile_stream.py is based on the Python standard library tarfile.py and used under the MIT License.
-See that file for details.
+  See that file for details.
 - xbrz/ is based on code provided by Zenju under the GPLv3 license. Some changes were made:
   - Added some `extern "C"` declarations to the functions I intended to call from python.
   - Removed some namespace use to avoid being mangled.
   - Replaced a template that was fucking braindead even for a C++ developer with a simple function that takes two arguments.
     Was that so hard?
-  - Converted the library to use RGBA instead of ARGB because Pillow only supports the former.
+  - Converted the library to use RGBA instead of ARGB.
