@@ -5,6 +5,7 @@
 import datetime as dt
 import io
 import json
+import urllib.parse
 from http import HTTPStatus
 
 from flask import Flask, jsonify, current_app, request, stream_with_context, url_for
@@ -81,10 +82,11 @@ def design_archive(design_code):
 
 		yield from tar.footer()
 
+	encoded_filename = urllib.parse.quote(design_name + '.tar')
 	return current_app.response_class(
 		stream_with_context(gen()),
 		mimetype='application/x-tar',
-		headers={'Content-Disposition': f"attachment; filename*=utf-8''{design_name}.tar"},
+		headers={'Content-Disposition': f"attachment; filename*=utf-8''{encoded_filename}"},
 	)
 
 @app.route('/design/<design_code>/<int:layer>.png')
@@ -102,9 +104,11 @@ def design_layer(design_code, layer):
 		c.save(out)
 	length = out.tell()
 	out.seek(0)
+
+	encoded_filename = urllib.parse.quote(f'{design_name}-{layer}.png')
 	return current_app.response_class(out, mimetype='image/png', headers={
 		'Content-Length': length,
-		'Content-Disposition': f"inline; filename*=utf-8''{design_name}-{layer}.png"
+		'Content-Disposition': f"inline; filename*=utf-8''{encoded_filename}"
 	})
 
 class InvalidProArgument(DesignError, InvalidFormatError):
