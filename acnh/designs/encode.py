@@ -2,7 +2,7 @@
 
 import io
 import itertools
-import secrets
+import random
 import struct
 
 import wand.image
@@ -30,9 +30,16 @@ def tile(image):
 	):
 		yield image[x:min(image.width, x+WIDTH), y:min(image.height, y+HEIGHT)]
 
+ISLAND_NAMES = [
+	'The Cloud',
+	'Black Lives Matter',
+	'Trans Rights Are Human Rights',
+	'All Cops Are Bastards',
+]
+
 def encode(name, image: wand.image.Image) -> dict:
 	encoded = {}
-	meta = {'mMtVNm': 'The Cloud', 'mMtDNm': name, 'mMtNsaId': secrets.randbits(64), 'mMtVer': 2306, 'mAppReleaseVersion': 7, 'mMtVRuby': 2, 'mMtUse': 99, 'mMtTag': [0, 0, 0], 'mMtPro': False, 'mMtLang': 'en-US', 'mPHash': 0, 'mShareUrl': ''}
+	meta = {'mMtVNm': random.choice(ISLAND_NAMES), 'mMtDNm': name, 'mMtNsaId': random.randrange(2**64), 'mMtVer': 2306, 'mAppReleaseVersion': 7, 'mMtVRuby': 2, 'mMtUse': 99, 'mMtTag': [0, 0, 0], 'mMtPro': False, 'mMtLang': 'en-US', 'mPHash': 0, 'mShareUrl': ''}
 	encoded['meta'] = msgpack.dumps(meta)
 
 	image = image.clone()
@@ -49,19 +56,19 @@ def encode(name, image: wand.image.Image) -> dict:
 		base_image.merge_layers('flatten')
 		image = base_image
 
-	if image.colors > PALETTE_SIZE:
+	if image.colors > PALETTE_SIZE - 1:
 		print('quantizing')
-		image.quantize(number_colors=PALETTE_SIZE, dither='no')
+		image.quantize(number_colors=PALETTE_SIZE - 1, dither='no')
 
-	if image.colors > PALETTE_SIZE:
+	if image.colors > PALETTE_SIZE - 1:
 		raise RuntimeError(
-			f'generated palette has more than {PALETTE_SIZE} colors ({len(palette)}) even after quantization!'
+			f'generated palette has more than {PALETTE_SIZE} colors ({image.colors}) even after quantization!'
 		)
 
 	with image:
 		image.save(filename=name + '.png')
-	# casting to a memoryview should ensure efficient slicing
-	pxs = memoryview(bytearray(image.export_pixels(storage='char', channel_map='RGBA')))
+		# casting to a memoryview should ensure efficient slicing
+		pxs = memoryview(bytearray(image.export_pixels(storage='char', channel_map='RGBA')))
 
 	# determine the palette
 	palette = {}
@@ -72,7 +79,12 @@ def encode(name, image: wand.image.Image) -> dict:
 			palette[color] = color_i
 			color_i += 1
 
-	palette[0] = PALETTE_SIZE
+	if len(palette) > PALETTE_SIZE - 1:
+		raise RuntimeError(
+			f'generated palette has more than {PALETTE_SIZE} colors ({len(palette)}) even after quantization!'
+		)
+
+	palette[0] = PALETTE_SIZE - 1
 
 	# actually encode the image
 	img = io.BytesIO()
