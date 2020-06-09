@@ -8,7 +8,7 @@ from functools import wraps
 
 import msgpack
 
-from ..common import config, authenticate_aauth, authenticate_acnh, ACNHError, InvalidFormatError, ACNHClient
+from ..common import acnh, ACNHError, InvalidFormatError
 from .. import utils
 
 class DesignError(ACNHError):
@@ -72,18 +72,8 @@ def design_code(design_id):
 
 	return ''.join(reversed(digits)).zfill(4 * 3 + 2)
 
-def authenticated(func):
-	@wraps(func)
-	def wrapped(*args, **kwargs):
-		_, id_token = authenticate_aauth()
-		token = authenticate_acnh(id_token)
-		acnh = ACNHClient(token)
-		return func(acnh, *args, **kwargs)
-	return wrapped
-
-@authenticated
-def download_design(acnh, design_id):
-	resp = acnh.request('GET', '/api/v2/designs', params={
+def download_design(design_id, partial=False):
+	resp = acnh().request('GET', '/api/v2/designs', params={
 		'offset': 0,
 		'limit': 1,
 		'q[design_id]': design_id,
@@ -96,14 +86,15 @@ def download_design(acnh, design_id):
 	if resp['total'] > 1:
 		raise RuntimeError('one ID requested, but more than one returned?!')
 	headers = resp['headers'][0]
+	if partial:
+		return headers
 
 	url = urllib.parse.urlparse(headers['body'])
-	resp = acnh.request('GET', url.path + '?' + url.query)
+	resp = acnh().request('GET', url.path + '?' + url.query)
 	return msgpack.loads(resp.content)
 
-@authenticated
-def list_designs(acnh, creator_id: int, *, pro: bool):
-	resp = acnh.request('GET', '/api/v2/designs', params={
+def list_designs(creator_id: int, *, pro: bool):
+	resp = acnh().request('GET', '/api/v2/designs', params={
 		'offset': 0,
 		'limit': 120,
 		'q[player_id]': creator_id,
@@ -115,16 +106,14 @@ def list_designs(acnh, creator_id: int, *, pro: bool):
 		raise UnknownCreatorIdError
 	return resp
 
-@authenticated
-def delete_design(acnh, design_id) -> None:
-	resp = acnh.request('DELETE', '/api/v1/designs/' + str(design_id))
+def delete_design(design_id) -> None:
+	resp = acnh().request('DELETE', '/api/v1/designs/' + str(design_id))
 	if resp.status_code == HTTPStatus.NOT_FOUND:
 		raise UnknownDesignCodeError
 
-@authenticated
-def create_design(acnh, design_data) -> int:
+def create_design(design_data) -> int:
 	"""create a design. returns the created design ID."""
-	resp = acnh.request('POST', '/api/v1/designs', data=msgpack.dumps(design_data))
+	resp = acnh().request('POST', '/api/v1/designs', data=msgpack.dumps(design_data))
 	if resp.status_code == HTTPStatus.BAD_REQUEST:
 		raise InvalidDesignError
 	data = msgpack.loads(resp.content)

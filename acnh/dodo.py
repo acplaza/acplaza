@@ -4,10 +4,9 @@ import datetime as dt
 import re
 from http import HTTPStatus
 
-from nintendo.nex.backend import BackEndClient
 from nintendo.nex import matchmaking
 
-from .common import authenticate_aauth, connect_backend, ACNHError, InvalidFormatError
+from .common import backend, ACNHError, InvalidFormatError
 
 class DodoCodeError(ACNHError):
 	pass
@@ -43,8 +42,10 @@ class InvalidDodoCodeError(DodoCodeError, InvalidFormatError):
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-def _search_dodo_code(backend: BackEndClient, dodo_code: str):
-	mm = matchmaking.MatchmakeExtensionClient(backend.secure_client)
+def search_dodo_code(dodo_code: str):
+	InvalidDodoCodeError.validate(dodo_code)
+
+	mm = matchmaking.MatchmakeExtensionClient(backend().secure_client)
 
 	param = matchmaking.MatchmakeSessionSearchCriteria()
 	param.attribs = ['', '', '', '', '', '']
@@ -74,13 +75,3 @@ def _search_dodo_code(backend: BackEndClient, dodo_code: str):
 		host=data[40:60].decode('utf-16').rstrip('\0'),
 		start_time=dt.datetime.fromtimestamp(session.started_time.timestamp()),
 	)
-
-def search_dodo_code(dodo_code: str):
-	InvalidDodoCodeError.validate(dodo_code)
-
-	user_id, id_token = authenticate_aauth()
-	backend = connect_backend(user_id, id_token)
-	try:
-		return _search_dodo_code(backend, dodo_code)
-	finally:
-		backend.close()

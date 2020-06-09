@@ -21,8 +21,10 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+import contextlib
 import datetime as dt
 import enum
+import functools
 import logging
 import re
 import urllib.parse
@@ -32,6 +34,7 @@ from http import HTTPStatus
 import msgpack
 import toml
 import requests
+from flask import g, request
 
 from nintendo.baas import BAASClient
 from nintendo.dauth import DAuthClient
@@ -113,34 +116,115 @@ class ACNHClient:
 			headers['Content-Type'] = 'application/x-msgpack'
 		return self.session.request(method, self.BASE + path, headers=headers, **kwargs)
 
-def authenticate_aauth():
+	def __enter__(self):
+		return self.session.__enter__()
+
+	def __exit__(self, *excinfo):
+		return self.session.__exit__(*excinfo)
+
+	def close(self):
+		self.session.close()
+
+def init_app(app):
+	app.teardown_appcontext(close_clients)
+	app.after_request(close_backend)
+
+gfuncs = []
+
+def close_clients(_):
+	for f in gfuncs:
+		with contextlib.suppress(AttributeError):
+			getattr(g, f.__name__).close()
+
+def gfunc(func):
+	@functools.wraps(func)
+	def wrapped():
+		try:
+			return getattr(g, func.__name__)
+		except AttributeError:
+			rv = func()
+			setattr(g, func.__name__, rv)
+			return rv
+
+	gfuncs.append(wrapped)
+	return wrapped
+
+@gfunc
+def dauth():
 	dauth = DAuthClient(keys)
 	dauth.set_certificate(cert, pkey)
 	dauth.set_system_version(SYSTEM_VERSION)
-	device_token = load_cached('tokens/dauth-token.txt', lambda: dauth.device_token()['device_auth_token'])
+	return dauth
 
+@gfunc
+def aauth():
 	aauth = AAuthClient()
 	aauth.set_system_version(SYSTEM_VERSION)
-	app_token = load_cached('tokens/aauth-token.txt', lambda: aauth.auth_digital(
-		ACNH.TITLE_ID, ACNH.TITLE_VERSION,
-		device_token, ticket
-	)['application_auth_token'])
+	return aauth
 
+@gfunc
+def baas():
 	baas = BAASClient()
 	baas.set_system_version(SYSTEM_VERSION)
+	baas.authenticate(device_token())
+	return baas
 
-	def get_id_token():
-		baas.authenticate(device_token)
-		response = baas.login(config['baas-user-id'], config['baas-password'], app_token)
-		return toml.dumps({'user-id': int(response['user']['id'], base=16), 'id-token': response['idToken']})
+@gfunc
+def acnh():
+	_, id_token = baas_credentials()
+	acnh = ACNHClient(id_token)
+	acnh_token_ = acnh_token(acnh)
+	try:
+		return ACNHClient(acnh_token_)
+	finally:
+		acnh.close()
 
-	resp = toml.loads(load_cached('tokens/id-token.txt', get_id_token, duration=3 * 60 * 60))
+def backend():
+	with contextlib.suppress(AttributeError):
+		return request.backend
+
+	backend = BackEndClient(backend_settings)
+	backend.configure(ACNH.ACCESS_KEY, ACNH.NEX_VERSION, ACNH.CLIENT_VERSION)
+
+	# connect to game server
+	backend.connect(HOST, PORT)
+
+	# log in on game server
+	user_id, id_token = baas_credentials()
+	auth_info = AuthenticationInfo()
+	auth_info.token = id_token
+	auth_info.ngs_version = 4  # Switch
+	auth_info.token_type = 2
+	backend.login(str(user_id), auth_info=auth_info)
+
+	request.backend = backend
+	return backend
+
+def close_backend(response):
+	with contextlib.suppress(AttributeError):
+		request.backend.close()
+
+def device_token():
+	return load_cached('tokens/dauth-token.txt', lambda: dauth().device_token()['device_auth_token'])
+
+def aauth_token():
+	return load_cached('tokens/aauth-token.txt', lambda: aauth().auth_digital(
+		ACNH.TITLE_ID, ACNH.TITLE_VERSION,
+		device_token(), ticket
+	)['application_auth_token'])
+
+def baas_credentials():
+	def get_credentials():
+		print('baas credentials')
+		resp = baas().login(config['baas-user-id'], config['baas-password'], aauth_token())
+		return toml.dumps({'user-id': int(resp['user']['id'], base=16), 'id-token': resp['idToken']})
+
+	resp = toml.loads(load_cached('tokens/baas-credentials.txt', get_credentials, duration=3 * 60 * 60))
 	return resp['user-id'], resp['id-token']
 
-def authenticate_acnh(id_token):
-	acnh = ACNHClient(id_token)
-
-	def get_app_token():
+def acnh_token(acnh):
+	def get_acnh_token():
+		print('acnh token')
 		resp = acnh.request('POST', '/api/v1/auth_token', data=msgpack.dumps({
 			'id': config['acnh-user-id'],
 			'password': config['acnh-password'],
@@ -150,24 +234,8 @@ def authenticate_acnh(id_token):
 
 	resp = msgpack.loads(load_cached(
 		'tokens/acnh-token.msgpack',
-		get_app_token,
+		get_acnh_token,
 		duration=6 * 60 * 60,
 		binary=True,
 	))
 	return resp['token']
-
-def connect_backend(user_id, id_token):
-	backend = BackEndClient(backend_settings)
-	backend.configure(ACNH.ACCESS_KEY, ACNH.NEX_VERSION, ACNH.CLIENT_VERSION)
-
-	# connect to game server
-	backend.connect(HOST, PORT)
-
-	# log in on game server
-	auth_info = AuthenticationInfo()
-	auth_info.token = id_token
-	auth_info.ngs_version = 4  # Switch
-	auth_info.token_type = 2
-	backend.login(str(user_id), auth_info=auth_info)
-
-	return backend
