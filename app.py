@@ -12,8 +12,8 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_ipaddr
 
 import acnh.dodo
-import acnh.designs
-import acnh.design_render
+import acnh.designs.api
+import acnh.designs.render
 import utils
 import re
 import tarfile_stream
@@ -39,7 +39,7 @@ def host_session(dodo_code):
 @limiter.limit('5 per second')
 def design(design_code):
 	InvalidDesignCodeError.validate(design_code)
-	return acnh.designs.download_design(acnh.designs.design_id(design_code))
+	return acnh.designs.api.download_design(acnh.designs.api.design_id(design_code))
 
 def get_scale_factor():
 	scale_factor = request.args.get('scale', '1')
@@ -58,7 +58,7 @@ def maybe_scale(image):
 def design_archive(design_code):
 	InvalidDesignCodeError.validate(design_code)
 	get_scale_factor()  # do the validation now since apparently it doesn't work in the generator
-	data = acnh.designs.download_design(design_code)
+	data = acnh.designs.api.download_design(acnh.designs.api.design_id(design_code))
 	meta, body = data['mMeta'], data['mData']
 	design_name = meta['mMtDNm']  # hungarian notation + camel case + abbreviations DO NOT mix well
 
@@ -66,7 +66,7 @@ def design_archive(design_code):
 		tar = tarfile_stream.open(mode='w|')
 		yield from tar.header()
 
-		for i, image in acnh.design_render.render_layers(body):
+		for i, image in acnh.designs.render.render_layers(body):
 			tarinfo = tarfile_stream.TarInfo(f'{design_name}/{i}.png')
 			tarinfo.mtime = dt.datetime.utcnow().timestamp()
 
@@ -91,11 +91,11 @@ def design_archive(design_code):
 @limiter.limit('12 per 10 seconds')
 def design_layer(design_code, layer):
 	InvalidDesignCodeError.validate(design_code)
-	data = acnh.designs.download_design(acnh.designs.design_id(design_code))
+	data = acnh.designs.api.download_design(acnh.designs.api.design_id(design_code))
 	meta, body = data['mMeta'], data['mData']
 	design_name = meta['mMtDNm']
 
-	rendered = acnh.design_render.render_layer(body, layer)
+	rendered = acnh.designs.render.render_layer(body, layer)
 	rendered = maybe_scale(rendered)
 	out = io.BytesIO()
 	with rendered.convert('png') as c:
@@ -120,12 +120,12 @@ def list_designs(creator_id):
 	pro = request.args.get('pro', 'false')
 	InvalidProArgument.validate(pro)
 
-	page = acnh.designs.list_designs(creator_id, offset=offset, limit=limit, pro=pro)
+	page = acnh.designs.api.list_designs(creator_id, offset=offset, limit=limit, pro=pro)
 	page['creator_name'] = page['headers'][0]['design_player_name']
 	page['creator_id'] = page['headers'][0]['design_player_id']
 
 	for hdr in page['headers']:
-		hdr['design_code'] = acnh.designs.design_code(hdr['id'])
+		hdr['design_code'] = acnh.designs.api.design_code(hdr['id'])
 		del hdr['meta'], hdr['body'], hdr['design_player_name'], hdr['design_player_id'], hdr['digest']
 		for dt_key in 'created_at', 'updated_at':
 			hdr[dt_key] = dt.datetime.utcfromtimestamp(hdr[dt_key])
