@@ -79,7 +79,8 @@ with open('/path/to/<guid>.dat', 'rb') as f:
 
 Business Source License, v1.1. See LICENSE for details.
 
-The license as of SHA1_HERE applies to commits before SHA1_HERE as well, regardless of the license stated in that
+The license as of 94d7fa2a8ea4096bd1ae981f1b53444966ec2198 applies to commits before
+94d7fa2a8ea4096bd1ae981f1b53444966ec2198 as well, regardless of the license stated in that
 commit.
 
 ### Additional terms / credits
@@ -102,3 +103,4 @@ commit.
     Was that so hard?
   - Converted the library to use RGBA instead of ARGB.
 - xbrz.py is based on xbrz/ and is released under the AGPLv3 license, see LICENSE-AGPLv3.md for details.
+  As xbrz.py is not directly imported by any other code, the rest of the code is not affected by this license.
