@@ -52,7 +52,7 @@ def maybe_scale(image):
 	if scale_factor == 1:
 		return image
 
-	return xbrz.scale_wand(image, scale_factor)
+	return utils.xbrz_scale_wand_in_subprocess(image, scale_factor)
 
 @app.route('/design/<design_code>.tar')
 @limiter.limit('2 per 10 seconds')

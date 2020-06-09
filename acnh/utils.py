@@ -2,6 +2,9 @@
 
 import os.path
 import time
+from math import floor
+
+import wand.color
 
 def load_cached(path, callback, *, duration=24 * 60 * 60, binary=False, _cache={}):
 	now = time.time()
@@ -40,3 +43,19 @@ def load_cached(path, callback, *, duration=24 * 60 * 60, binary=False, _cache={
 		rv = f.read()
 	_cache[path] = rv, now
 	return rv
+
+def chunked(seq, n):
+	length = len(seq)
+	for i in range(0, length - (n - 1), n):
+		yield seq[i:i+n]
+	mod = len(seq) % n
+	if mod:
+		yield seq[-mod:]
+
+def color_to_rgba(color: wand.color.Color):
+	return (
+		color.red_int8 << 24
+		| color.green_int8 << 16
+		| color.blue_int8 << 8
+		| color.alpha_int8
+	)

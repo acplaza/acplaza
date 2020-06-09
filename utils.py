@@ -2,9 +2,14 @@
 
 import base64
 import datetime as dt
+import io
+import pickle
 import json
+import subprocess
+import sys
 
 import flask.json
+import wand.image
 from flask import current_app
 from werkzeug.exceptions import HTTPException
 from acnh.common import ACNHError
@@ -48,3 +53,20 @@ def handle_exception(ex):
 	})
 	response.content_type = 'application/json'
 	return response
+
+def xbrz_scale_wand_in_subprocess(img: wand.image.Image, factor):
+	data = bytearray(img.export_pixels(channel_map='RGBA', storage='char'))
+
+	p = subprocess.Popen(
+		[sys.executable, '-m', 'xbrz', *map(str, (factor, *img.size))],
+		stdin=subprocess.PIPE,
+		stdout=subprocess.PIPE,
+		stderr=subprocess.PIPE,
+	)
+	stdout, stderr = p.communicate(data)
+	if stderr and p.returncode:
+		raise RuntimeError(stderr.decode('utf-8'))
+
+	scaled = wand.image.Image(width=img.width * factor, height=img.height * factor)
+	scaled.import_pixels(channel_map='RGBA', storage='char', data=stdout)
+	return scaled

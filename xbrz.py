@@ -1,5 +1,18 @@
 # © 2020 io mintz <io@mintz.cc>
 
+# xbrz.py is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as
+# published by the Free Software Foundation, either version 3 of the
+# License, or (at your option) any later version.
+
+# xbrz.py is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU Affero General Public License for more details.
+
+# You should have received a copy of the GNU Affero General Public License
+# along with xbrz.py. If not, see <https://www.gnu.org/licenses/>.
+
 import ctypes
 import wand.image
 from enum import IntEnum
@@ -48,3 +61,12 @@ def scale_wand(img: wand.image.Image, factor):
 	scaled = wand.image.Image(width=factor * img.width, height=factor * img.height)
 	scaled.import_pixels(channel_map='RGBA', data=bytearray(scaled_pixels))
 	return scaled
+
+def main():
+	import sys
+
+	scaled = scale(bytearray(sys.stdin.buffer.read()), *map(int, sys.argv[1:]), ColorFormat.RGBA)
+	sys.stdout.buffer.write(scaled)
+
+if __name__ == '__main__':
+	main()

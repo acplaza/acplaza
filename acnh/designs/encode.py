@@ -2,11 +2,13 @@
 
 import io
 import itertools
+import secrets
 import struct
+
 import wand.image
 import msgpack
 
-from . import utils
+from .. import utils
 from .format import PALETTE_SIZE, WIDTH, HEIGHT, SIZE
 
 with open('data/net image.jpg', 'rb') as f:
@@ -15,44 +17,68 @@ with open('data/preview image.jpg', 'rb') as f:
 	dummy_preview_image = f.read()
 
 LITTLE_ENDIAN_UINT32 = struct.Struct('>L')
+TWO_LITTLE_ENDIAN_UINT32S = struct.Struct('>LL')
 
-def chop(image):
-	num_segments = image.width // WIDTH
-	segment_width = image.width // num_segments
-	for x, y in itertools.product(range(0, image.width, segment_width), repeat=2):
-		yield image[x:x+segment_width, y:y+segment_width]
+def tile(image):
+	num_v_segments = image.width // WIDTH
+	num_h_segments = image.height // HEIGHT
+	# y, x so that the images are in row-major order not column-major order,
+	# which is how most people expect iamges to be tiled
+	for y, x in itertools.product(
+		range(0, image.height, HEIGHT),
+		range(0, image.width, WIDTH),
+	):
+		yield image[x:min(image.width, x+WIDTH), y:min(image.height, y+HEIGHT)]
 
 def encode(name, image: wand.image.Image) -> dict:
 	encoded = {}
-	meta = {'mMtVNm': 'ACNH API', 'mMtDNm': name, 'mMtVer': 2306, 'mAppReleaseVersion': 7, 'mMtVRuby': 2, 'mMtUse': 99, 'mMtTag': [0, 0, 0], 'mMtPro': False, 'mMtNsaId': 6345768839027671582, 'mMtLang': 'en-US', 'mPHash': 0, 'mShareUrl': ''}
+	meta = {'mMtVNm': 'The Cloud', 'mMtDNm': name, 'mMtNsaId': secrets.randbits(64), 'mMtVer': 2306, 'mAppReleaseVersion': 7, 'mMtVRuby': 2, 'mMtUse': 99, 'mMtTag': [0, 0, 0], 'mMtPro': False, 'mMtLang': 'en-US', 'mPHash': 0, 'mShareUrl': ''}
 	encoded['meta'] = msgpack.dumps(meta)
-	with image.clone() as image:
-		if image.size > SIZE:
-			image.scale(*SIZE)
-		if image.colors > PALETTE_SIZE:
-			print('quantizing')
-			image.quantize(number_colors=PALETTE_SIZE, dither='no')
-		pxs = memoryview(bytearray(image.export_pixels(storage='char', channel_map='RGBA')))
 
-	palette = {}
-	palette_idx = 0
-	for px in utils.chunked(pxs, 4):
-		color, = LITTLE_ENDIAN_UINT32.unpack(px)
-		if color not in palette:
-			palette[color] = palette_idx
-			palette_idx += 1
+	image = image.clone()
+	if image.size > SIZE:
+		# preserve aspect ratio
+		image.transform(resize=f'{WIDTH}x{HEIGHT}')
+	if image.size != SIZE:
+		# Due to the ACNH image format not containing size information, all images must be exactly
+		# the same size. Otherwise, the image has extra space at the *bottom*, not necessarily on the
+		# side, as may be the case with this image.
+		base_image = wand.image.Image(width=WIDTH, height=HEIGHT)
+		base_image.background_color = wand.color.Color('rgba(0, 0, 0, 0)')
+		base_image.sequence.append(image)
+		base_image.merge_layers('flatten')
+		image = base_image
 
-	if len(palette) > PALETTE_SIZE:
+	if image.colors > PALETTE_SIZE:
+		print('quantizing')
+		image.quantize(number_colors=PALETTE_SIZE, dither='no')
+
+	if image.colors > PALETTE_SIZE:
 		raise RuntimeError(
 			f'generated palette has more than {PALETTE_SIZE} colors ({len(palette)}) even after quantization!'
 		)
 
+	with image:
+		image.save(filename=name + '.png')
+	# casting to a memoryview should ensure efficient slicing
+	pxs = memoryview(bytearray(image.export_pixels(storage='char', channel_map='RGBA')))
+
+	# determine the palette
+	palette = {}
+	color_i = 0
+	for px in utils.chunked(pxs, 4):
+		color, = LITTLE_ENDIAN_UINT32.unpack(px)
+		if color not in palette:
+			palette[color] = color_i
+			color_i += 1
+
+	palette[0] = PALETTE_SIZE
+
 	# actually encode the image
 	img = io.BytesIO()
 	for pixels in utils.chunked(pxs, 8):
-		px1, = LITTLE_ENDIAN_UINT32.unpack_from(pixels)
-		px2, = LITTLE_ENDIAN_UINT32.unpack_from(pixels, offset=4)
-		img.write((palette[px1] << 4 | palette[px2]).to_bytes(1, byteorder='big'))
+		px1, px2 = TWO_LITTLE_ENDIAN_UINT32S.unpack_from(pixels)
+		img.write((palette[px2] << 4 | palette[px1]).to_bytes(1, byteorder='big'))
 
 	data = {}
 	data['mMeta'] = meta
