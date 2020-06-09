@@ -77,10 +77,10 @@ with open('/path/to/<guid>.dat', 'rb') as f:
 
 ## License
 
-GPLv3 or later, see LICENSE.md.
+Business Source License, v1.1. See LICENSE for details.
 
-**NOTE:** Unless you have cloned the repository before bc84e1a3d14711798c12b1e13a8f870aada857a4 and accepted the license there.
-In all other situations this repository is **only** covered by the GPLv3, not the AGPLv3.
+The license as of SHA1_HERE applies to commits before SHA1_HERE as well, regardless of the license stated in that
+commit.
 
 ### Additional terms / credits
 
@@ -94,9 +94,11 @@ In all other situations this repository is **only** covered by the GPLv3, not th
   and copyright ownership has been transferred to me, io mintz.
 - tarfile_stream.py is based on the Python standard library tarfile.py and used under the MIT License.
   See that file for details.
-- xbrz/ is based on code provided by Zenju under the GPLv3 license. Some changes were made:
+- xbrz/ is based on code provided by Zenju under the GPLv3 license. See xbrz/License.txt for details.
+  Some changes were made:
   - Added some `extern "C"` declarations to the functions I intended to call from python.
   - Removed some namespace use to avoid being mangled.
   - Replaced a template that was fucking braindead even for a C++ developer with a simple function that takes two arguments.
     Was that so hard?
   - Converted the library to use RGBA instead of ARGB.
+- xbrz.py is based on xbrz/ and is released under the AGPLv3 license, see LICENSE-AGPLv3.md for details.
