@@ -26,3 +26,8 @@ prodinfo-path = "/path/to/PRODINFO.img"
 # You need the base ticket, not an update ticket.
 # Do not remove console specific data.
 ticket-path = "/path/to/acnh-base.tik"
+
+[postgres-db]
+# keys are documented here: https://magicstack.github.io/asyncpg/current/api/index.html#asyncpg.connection.connect
+# you'll probably want to configure at least "database", but all are optional
+database = 'acnh_api'

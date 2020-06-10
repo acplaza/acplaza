@@ -48,12 +48,23 @@ from nintendo.settings import Settings
 
 from .utils import load_cached
 
+class ACNHError(Exception):
+	code: ClassVar[int]
+	message: ClassVar[str]
+	http_status: ClassVar[int]
+
+	def __int__(self):
+		return self.code
+
+	def to_dict(self):
+		return {'error': self.message, 'error_code': self.code, 'http_status': self.http_status}
+
+# this is here to resolve circular imports
+from utils import config
+
 SYSTEM_VERSION = 1003  # 10.0.3
 HOST = 'g%08x-lp1.s.n.srv.nintendo.net' % ACNH.GAME_SERVER_ID
 PORT = 443
-
-with open('config.toml') as f:
-	config = toml.load(f)
 
 keys = KeySet(config['keyset-path'])
 prodinfo = ProdInfo(keys, config['prodinfo-path'])
@@ -65,17 +76,6 @@ with open(config['ticket-path'], 'rb') as f:
 	ticket = f.read()
 
 backend_settings = Settings('switch.cfg')
-
-class ACNHError(Exception):
-	code: ClassVar[int]
-	message: ClassVar[str]
-	http_status: ClassVar[int]
-
-	def __int__(self):
-		return self.code
-
-	def to_dict(self):
-		return {'error': self.message, 'error_code': self.code, 'http_status': self.http_status}
 
 class InvalidFormatError(ACNHError):
 	http_status = HTTPStatus.BAD_REQUEST
@@ -203,6 +203,7 @@ def backend():
 def close_backend(response):
 	with contextlib.suppress(AttributeError):
 		request.backend.close()
+	return response
 
 def device_token():
 	return load_cached('tokens/dauth-token.txt', lambda: dauth().device_token()['device_auth_token'])

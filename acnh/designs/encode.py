@@ -30,16 +30,10 @@ def tile(image):
 	):
 		yield image[x:min(image.width, x+WIDTH), y:min(image.height, y+HEIGHT)]
 
-ISLAND_NAMES = [
-	'The Cloud',
-	'Black Lives Matter',
-	'Trans Rights Are Human Rights',
-	'All Cops Are Bastards',
-]
 
-def encode(name, image: wand.image.Image) -> dict:
+def encode(island_name, design_name, image: wand.image.Image) -> dict:
 	encoded = {}
-	meta = {'mMtVNm': random.choice(ISLAND_NAMES), 'mMtDNm': name, 'mMtNsaId': random.randrange(2**64), 'mMtVer': 2306, 'mAppReleaseVersion': 7, 'mMtVRuby': 2, 'mMtUse': 99, 'mMtTag': [0, 0, 0], 'mMtPro': False, 'mMtLang': 'en-US', 'mPHash': 0, 'mShareUrl': ''}
+	meta = {'mMtVNm': island_name, 'mMtDNm': design_name, 'mMtNsaId': random.randrange(2**64), 'mMtVer': 2306, 'mAppReleaseVersion': 7, 'mMtVRuby': 2, 'mMtUse': 99, 'mMtTag': [0, 0, 0], 'mMtPro': False, 'mMtLang': 'en-US', 'mPHash': 0, 'mShareUrl': ''}
 	encoded['meta'] = msgpack.dumps(meta)
 
 	image = image.clone()
@@ -57,7 +51,6 @@ def encode(name, image: wand.image.Image) -> dict:
 		image = base_image
 
 	if image.colors > PALETTE_SIZE - 1:
-		print('quantizing')
 		image.quantize(number_colors=PALETTE_SIZE - 1, dither='no')
 
 	if image.colors > PALETTE_SIZE - 1:
@@ -66,7 +59,6 @@ def encode(name, image: wand.image.Image) -> dict:
 		)
 
 	with image:
-		image.save(filename=name + '.png')
 		# casting to a memoryview should ensure efficient slicing
 		pxs = memoryview(bytearray(image.export_pixels(storage='char', channel_map='RGBA')))
 
@@ -84,8 +76,6 @@ def encode(name, image: wand.image.Image) -> dict:
 			f'generated palette has more than {PALETTE_SIZE} colors ({len(palette)}) even after quantization!'
 		)
 
-	palette[0] = PALETTE_SIZE - 1
-
 	# actually encode the image
 	img = io.BytesIO()
 	for pixels in utils.chunked(pxs, 8):
@@ -95,7 +85,11 @@ def encode(name, image: wand.image.Image) -> dict:
 	data = {}
 	data['mMeta'] = meta
 	data['mData'] = img_data = {}
-	img_data['mPalette'] = {str(i): color for color, i in palette.items()}
+
+	palette = img_data['mPalette'] = {str(i): color for color, i in palette.items()}
+	# implicit transparent
+	palette[str(PALETTE_SIZE - 1)] = 0
+
 	img_data['mData'] = {'0': img.getvalue()}
 	img_data['mAuthor'] = {'mVId': 4255292630, 'mPId': 2422107098, 'mGender': 0}
 	img_data['mFlg'] = 2

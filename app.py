@@ -12,6 +12,7 @@ from flask import Flask, jsonify, current_app, request, stream_with_context, url
 from flask_limiter import Limiter
 from flask_limiter.util import get_ipaddr
 
+import acnh.common
 import acnh.dodo
 import acnh.designs.api
 import acnh.designs.render
@@ -24,7 +25,9 @@ from acnh.designs.api import DesignError, InvalidDesignCodeError
 
 app = Flask(__name__)
 utils.init_app(app)
+acnh.common.init_app(app)
 limiter = Limiter(app, key_func=get_ipaddr)
+
 
 class InvalidScaleFactorError(InvalidFormatError):
 	message = 'invalid scale factor'
@@ -136,5 +139,21 @@ def list_designs(creator_id):
 
 	return page
 
+class MissingDesignName(DesignError):
+	message = 'you must supply a design name'
+	code = 28
+	http_status = HTTPStatus.BAD_REQUEST
+
+#@app.route('/designs', methods=['POST'])
+#@limiter.limit('1 per 15s')
+#def create_design():
+#	try:
+#		name = request.args['name']
+#	except KeyError:
+#		raise MissingDesignName
+#
+#	body = request.data
+#	mode = 
+#
 if __name__ == '__main__':
 	app.run(use_reloader=True)

@@ -102,8 +102,6 @@ def list_designs(creator_id: int, *, pro: bool):
 	})
 	resp.raise_for_status()
 	resp = msgpack.loads(resp.content)
-	if not resp['total']:
-		raise UnknownCreatorIdError
 	return resp
 
 def delete_design(design_id) -> None:

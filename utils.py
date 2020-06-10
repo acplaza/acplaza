@@ -1,17 +1,30 @@
 # © 2020 io mintz <io@mintz.cc>
 
+import asyncio
 import base64
+import contextlib
 import datetime as dt
 import io
 import pickle
 import json
+import secrets
 import subprocess
 import sys
+from http import HTTPStatus
 
 import flask.json
+import jinja2
 import wand.image
-from flask import current_app
+import toml
+import asyncpg
+import syncpg
+from flask import current_app, g, request
 from werkzeug.exceptions import HTTPException
+
+# config comes first to resolve circular imports
+with open('config.toml') as f:
+	config = toml.load(f)
+
 from acnh.common import ACNHError
 
 def init_app(app):
@@ -19,6 +32,70 @@ def init_app(app):
 	app.json_encoder = CustomJSONEncoder
 	app.errorhandler(ACNHError)(handle_acnh_exception)
 	app.errorhandler(HTTPException)(handle_exception)
+	app.teardown_appcontext(close_pgconn)
+	app.before_request(process_authorization)
+
+def pg():
+	with contextlib.suppress(AttributeError):
+		return g.pg
+
+	asyncio.set_event_loop(asyncio.new_event_loop())
+	pg = syncpg.connect(**config['postgres-db'])
+	g.pg = pg
+	return pg
+
+class AuthorizationError(ACNHError):
+	pass
+
+class MissingUserAgentStringError(AuthorizationError):
+	code = 91
+	message = 'User-Agent header required'
+	http_status = HTTPStatus.BAD_REQUEST
+
+class IncorrectAuthorizationHeader(AuthorizationError):
+	code = 92
+	message = 'invalid or incorrect Authorization header'
+	http_status = HTTPStatus.UNAUTHORIZED
+
+def process_authorization():
+	request.user_id = None
+
+	if not request.headers.get('User-Agent'):
+		raise MissingUserAgentStringError
+	token = request.headers.get('Authorization')
+	if not token:
+		raise IncorrectAuthorizationHeader
+
+	try:
+		user_id, secret = parse_token(token)
+	except ValueError:
+		raise IncorrectAuthorizationHeader
+
+	db_secret = pg().fetchval(queries.secret(), user_id)
+	if db_secret is None:
+		raise IncorrectAuthorizationHeader
+
+	if not secrets.compare_digest(secret, db_secret):
+		raise IncorrectAuthorizationHeader
+
+	request.user_id = user_id
+
+def encode_token(user_id, secret):
+	return base64.b64encode(user_id.to_bytes(4, byteorder='big')).decode() + '.' + base64.b64encode(secret).decode()
+
+def parse_token(token):
+	id, secret = token.encode().split(b'.')
+	# big endian is used cause it's easier to read at a glance
+	return int.from_bytes(base64.b64decode(id), byteorder='big'), base64.b64decode(secret)
+
+def close_pgconn(_):
+	with contextlib.suppress(AttributeError):
+		g.pg.close()
+
+queries = jinja2.Environment(
+	loader=jinja2.FileSystemLoader('.'),
+	line_statement_prefix='-- :',
+).get_template('queries.sql').module
 
 class CustomJSONEncoder(flask.json.JSONEncoder):
 	def __init__(self, **kwargs):
@@ -30,6 +107,8 @@ class CustomJSONEncoder(flask.json.JSONEncoder):
 			return base64.b64encode(x).decode()
 		if isinstance(x, dt.datetime):
 			return x.replace(tzinfo=dt.timezone.utc).isoformat()
+		if isinstance(x, asyncpg.Record):
+			return super().default(dict(x))
 		return super().default(x)
 
 def handle_acnh_exception(ex):
