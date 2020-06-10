@@ -1,6 +1,6 @@
 -- #region Designs
 
--- :set MAX_DESIGNS = 32
+-- :set MAX_DESIGNS = 120
 
 -- :macro stale_designs()
 -- params: pro, n

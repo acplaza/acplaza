@@ -3,6 +3,7 @@
 import contextlib
 import random
 import secrets
+import time
 from http import HTTPStatus
 from functools import partial
 from typing import Iterable
@@ -13,9 +14,6 @@ from ..common import ACNHError
 from . import api, encode
 from .format import SIZE, WIDTH, HEIGHT, BYTES_PER_PIXEL
 from utils import config, pg, queries
-
-TOKEN_SIZE_BYTES = 32
-token = partial(secrets.token_bytes, TOKEN_SIZE_BYTES)
 
 class ImageError(ACNHError):
 	pass
@@ -33,9 +31,7 @@ class IncorrectDeletionTokenError(ImageError):
 def garbage_collect_designs(needed_slots: int, *, pro: bool):
 	"""Free at least needed_slots. Pass pro depending on whether Pro slots are needed."""
 	design_ids = pg().fetchvals(queries.stale_designs(), pro, needed_slots)
-	print('GC', len(design_ids), 'designs')
 	for design_id in design_ids:
-		print(design_id, api.design_code(design_id))
 		try:
 			api.delete_design(design_id)
 		except api.UnknownDesignCodeError:
@@ -89,10 +85,17 @@ class InvalidLayerSizeError(InvalidImageError):
 		d['message'] = self.message.format(self)
 		return d
 
+MAX_DESIGN_TILES = 16
+
 class TiledImageTooBigError(InvalidImageError):
 	code = 35
-	message = 'The uploaded image would exceed 30 tiles.'
+	message = f'The uploaded image would exceed {MAX_DESIGN_TILES} tiles.'
 	status = HTTPStatus.REQUEST_ENTITY_TOO_LARGE
+
+	@classmethod
+	def validate(cls, img):
+		if img.width // WIDTH * img.height // HEIGHT > MAX_DESIGN_TILES:
+			raise cls
 
 ISLAND_NAMES = [
 	'The Cloud',
@@ -103,28 +106,27 @@ ISLAND_NAMES = [
 
 island_name = partial(random.choice, ISLAND_NAMES)
 
-def create_image(*, author_name, image_name, width, height, pixels: bytes, tile: bool) -> Iterable[int]:
-	"""Upload a design. Tile controls whether to tile or scale the image. Returns an iterable of design IDs."""
-	if len(pixels) != width * height * BYTES_PER_PIXEL:
-		raise InvalidLayerSize(width, height)
+def create_image(*, author_name, image_name, image: wand.image.Image, scale: bool) -> Iterable[int]:
+	"""Upload a design. Scale controls whether to tile or scale the image. Returns an iterable of design IDs."""
+	if image.size > SIZE and not scale:
+		TiledImageTooBigError.validate(image)
+		# backwards so that the first image shows up first in game
+		designs = list(encode.tile(image.clone()))[::-1]
+	else:  # scale if necessary
+		designs = [image.clone()]
 
-	with wand.image.Image(width=width, height=height) as img:
-		img.import_pixels(channel_map='RGBA', data=pixels)
-		if (width, height) > SIZE and tile:
-			if width // WIDTH * height // HEIGHT > 30:
-				raise TiledImageTooBigError
-			designs = list(encode.tile(img.clone()))
-		else:  # scale if necessary
-			designs = [img.clone()]
-
-	deletion_token = token()
+	deletion_token = secrets.token_bytes()
 	image_id = pg().fetchval(
-		queries.create_image(), author_name, image_name, width, height, [pixels], deletion_token,
+		queries.create_image(),
+		author_name, image_name, image.width, image.height, [bytearray(image.export_pixels())], deletion_token,
 	)
 	island_name_ = island_name()
-	for i, design in enumerate(designs, 1):
+	for i, design in zip(reversed(range(1, len(designs) + 1)), designs):
 		design_name = f'{image_name} {i}' if len(designs) > 1 else image_name
+		# we do this on each loop in case someone uploaded a few more designs in between iterations
 		garbage_collect_designs(len(designs) - (i - 1), pro=False)
+		# designs get out of order if we post them too fast
+		time.sleep(0.5)
 		design_id = api.create_design(encode.encode(island_name_, design_name, design))
 		create_design(image_id=image_id, design_id=design_id, position=i, pro=False)
 		yield design_id

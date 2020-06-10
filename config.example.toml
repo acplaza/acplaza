@@ -17,6 +17,9 @@ baas-password = "..."  # should be 40 characters
 acnh-user-id = 0x0123456789abcdef  # 16 hex digits
 acnh-password = "..."  # should be 64 characters
 
+# this is the in game "creator ID" from the Designs Kiosk without hyphens or "MO"
+acnh-design-creator-id = 1234_5678_9123
+
 # You can dump prod.keys with Lockpick_RCM and
 # PRODINFO from hekate (decrypt it if necessary)
 keyset-path = "/path/to/prod.keys"
@@ -30,4 +33,4 @@ ticket-path = "/path/to/acnh-base.tik"
 [postgres-db]
 # keys are documented here: https://magicstack.github.io/asyncpg/current/api/index.html#asyncpg.connection.connect
 # you'll probably want to configure at least "database", but all are optional
-database = 'acnh_api'
+database = "acnh_api"
