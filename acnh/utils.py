@@ -4,7 +4,7 @@ import os.path
 import time
 from math import floor
 
-def load_cached(path, callback, *, duration=24 * 60 * 60, binary=False, _cache={}):
+def load_cached(path, callback, *, duration=23 * 60 * 60, binary=False, _cache={}):
 	now = time.time()
 
 	def refresh_cache():

@@ -216,16 +216,14 @@ def aauth_token():
 
 def baas_credentials():
 	def get_credentials():
-		print('baas credentials')
 		resp = baas().login(config['baas-user-id'], config['baas-password'], aauth_token())
 		return toml.dumps({'user-id': int(resp['user']['id'], base=16), 'id-token': resp['idToken']})
 
-	resp = toml.loads(load_cached('tokens/baas-credentials.txt', get_credentials, duration=3 * 60 * 60))
+	resp = toml.loads(load_cached('tokens/baas-credentials.txt', get_credentials, duration=2.5 * 60 * 60))
 	return resp['user-id'], resp['id-token']
 
 def acnh_token(acnh):
 	def get_acnh_token():
-		print('acnh token')
 		resp = acnh.request('POST', '/api/v1/auth_token', data=msgpack.dumps({
 			'id': config['acnh-user-id'],
 			'password': config['acnh-password'],
@@ -236,7 +234,7 @@ def acnh_token(acnh):
 	resp = msgpack.loads(load_cached(
 		'tokens/acnh-token.msgpack',
 		get_acnh_token,
-		duration=6 * 60 * 60,
+		duration=5 * 60 * 60,
 		binary=True,
 	))
 	return resp['token']
