@@ -108,7 +108,7 @@ class CustomJSONEncoder(flask.json.JSONEncoder):
 		if isinstance(x, dt.datetime):
 			return x.replace(tzinfo=dt.timezone.utc).isoformat()
 		if isinstance(x, asyncpg.Record):
-			return super().default(dict(x))
+			return dict(x)
 		return super().default(x)
 
 def handle_acnh_exception(ex):

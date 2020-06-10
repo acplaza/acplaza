@@ -231,7 +231,13 @@ def create_image():
 
 @app.route('/image/<image_id>')
 def image(image_id):
-	return designs_db.image(int(InvalidImageIdError.validate(image_id)))
+	rv = designs_db.image(int(InvalidImageIdError.validate(image_id)))
+	designs = rv['designs']
+	for i, design in enumerate(designs):
+		d = designs[i] = dict(design)
+		d['design_code'] = designs_api.design_code(design['design_id'])
+
+	return rv
 
 class InvalidImageDeletionToken(ImageError, InvalidFormatError):
 	code = 42
