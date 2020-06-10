@@ -51,7 +51,7 @@ def encode(island_name, design_name, image: wand.image.Image) -> dict:
 		image = base_image
 
 	if image.colors > PALETTE_SIZE - 1:
-		image.quantize(number_colors=PALETTE_SIZE - 1, dither='no')
+		image.quantize(number_colors=PALETTE_SIZE - 1)
 
 	if image.colors > PALETTE_SIZE - 1:
 		raise RuntimeError(
