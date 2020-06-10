@@ -210,7 +210,8 @@ def create_image():
 	except wand.image.Exception:
 		raise InvalidImageError
 
-	img.transform(resize=f'{resize[0]}x{resize[1]}')
+	if resize is not None:
+		img.transform(resize=f'{resize[0]}x{resize[1]}')
 	# do this again now because custom exception handlers don't run for generators ¯\_(ツ)_/¯
 	designs_db.TiledImageTooBigError.validate(img)
 
