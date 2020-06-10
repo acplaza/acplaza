@@ -4,6 +4,11 @@ This is a REST API for programmatic access to Dodo Codes and Custom Designs. My 
 - https://acnh-api.ashitty.website
 - http://acnhok4pb2e6jwy2khjollqznnkrqxpt5toaknjrqdfeqir3iqhyl6ad.onion/
 
+This API requires paid authorization.
+If you would like access, please [subscribe on Patreon](https://patreon.com/iomintz) for at least $5 / month.
+After you pay I will message you a token via Patreon. Send this token as the value of the `Authorization` header
+in all requests.
+
 ## Endpoints
 
 ### Dodo Codes
@@ -25,10 +30,6 @@ Returns a tar archive containing a PNG render of each layer of the given custom 
 Returns a PNG render of the specified layer.
 - /designs/:creator-id Lists the designs posted by the given creator ID. Query parameters:
   - pro: true/false. whether to list the creator's Pro designs only. If false only normal designs will be listed.
-  - offset: 0-80. What offset to use.
-  - For now, the limit is hardcoded to 40 to emulate a Switch and reduce ban risk. Later this restriction may be lifted.
-  - The offset is also rounded down to the nearest Cmultiple of 40 for the same reason.
-  - Pass offset=40 to get the next page, or offset=80 to get page 3. There is no page 4.
 
 ## Setup
 
