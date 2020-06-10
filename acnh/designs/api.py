@@ -114,5 +114,6 @@ def create_design(design_data) -> int:
 	resp = acnh().request('POST', '/api/v1/designs', data=msgpack.dumps(design_data))
 	if resp.status_code == HTTPStatus.BAD_REQUEST:
 		raise InvalidDesignError
+	resp.raise_for_status()
 	data = msgpack.loads(resp.content)
 	return data['id']

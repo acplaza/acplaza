@@ -23,7 +23,7 @@ class UnknownImageIdError(ImageError):
 	message = 'unknown image ID'
 	http_status = HTTPStatus.NOT_FOUND
 
-class IncorrectDeletionTokenError(ImageError):
+class IncorrectImageDeletionTokenError(ImageError):
 	code = 32
 	message = 'incorrect image deletion token'
 	http_status = HTTPStatus.UNAUTHORIZED
@@ -134,7 +134,7 @@ def create_image(*, author_name, image_name, image: wand.image.Image, scale: boo
 def create_design(*, image_id, design_id, position, pro):
 	pg().execute(queries.create_design(), image_id, design_id, position, pro)
 
-def fetch_image(image_id):
+def image(image_id):
 	image = pg().fetchrow(queries.image(), image_id)
 	if image is None:
 		raise UnknownImageIdError

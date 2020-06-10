@@ -124,8 +124,7 @@ class InvalidProArgument(DesignError, InvalidFormatError):
 @app.route('/designs/<creator_id>')
 @limiter.limit('5 per 1 seconds')
 def list_designs(creator_id):
-	InvalidCreatorIdError.validate(creator_id)
-	creator_id = int(creator_id.replace('-', ''))
+	creator_id = int(designs_api.InvalidCreatorIdError.validate(creator_id).replace('-', ''))
 	pro = request.args.get('pro', 'false')
 	InvalidProArgument.validate(pro)
 
@@ -159,7 +158,7 @@ class InvalidImageArgument(ImageError):
 
 class InvalidImageLayerNameError(ImageError, InvalidFormatError):
 	code = 37
-	message = 'Invalid image layer format name.'
+	message = 'Invalid image layer name format.'
 	regex = re.compile('[0-9]')
 
 class MissingImageLayersError(ImageError):
@@ -174,6 +173,11 @@ class InvalidImageError(ImageError):
 	code = 39
 	message = 'One or more layers submitted represented an invalid image.'
 	status = HTTPStatus.BAD_REQUEST
+
+class InvalidImageIdError(ImageError, InvalidFormatError):
+	code = 41  # rip my nice x/10 = category system
+	message = 'Invalid image ID.'
+	regex = re.compile('[0-9]+')
 
 @app.route('/images', methods=['POST'])
 @limiter.limit('1 per 15s')
@@ -224,6 +228,22 @@ def create_image():
 	# This is due to its iterative nature. I considered using JSON anyway, but very few libraries
 	# support iterative JSON decoding, and we don't need anything other than an array of strings anyway.
 	return current_app.response_class(stream_with_context(gen()), mimetype='text/plain')
+
+@app.route('/image/<image_id>')
+def image(image_id):
+	return designs_db.image(int(InvalidImageIdError.validate(image_id)))
+
+class InvalidImageDeletionToken(ImageError, InvalidFormatError):
+	code = 42
+	message = 'invalid image deletion token'
+	regex = re.compile('[a-zA-Z0-9]+')
+
+@app.route('/image/<image_id>', methods=['DELETE'])
+def delete_image(image_id):
+	token = bytes.fromhex(InvalidImageDeletionToken.validate(request.args.get('token', '')))
+	image_id = int(InvalidImageIdError.validate(image_id))
+	designs_db.delete_image(image_id, token)
+	return jsonify('OK')
 
 if __name__ == '__main__':
 	app.run(use_reloader=True)

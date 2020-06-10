@@ -90,6 +90,7 @@ class InvalidFormatError(ACNHError):
 	def validate(cls, s):
 		if not cls.regex.fullmatch(s):
 			raise cls
+		return s
 
 class ACNHClient:
 	BASE = 'https://api.hac.lp1.acbaa.srv.nintendo.net'
