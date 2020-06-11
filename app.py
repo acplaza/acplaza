@@ -13,7 +13,7 @@ from functools import partial
 from http import HTTPStatus
 
 import wand.image
-from flask import Flask, jsonify, current_app, request, stream_with_context, url_for, abort
+from flask import Flask, jsonify, current_app, request, stream_with_context, url_for, abort, session
 from flask_limiter import Limiter
 from flask_limiter.util import get_ipaddr
 
@@ -34,6 +34,30 @@ app = Flask(__name__)
 utils.init_app(app)
 common.init_app(app)
 limiter = Limiter(app, key_func=get_ipaddr)
+
+@app.route('/login')
+@utils.token_exempt
+def login_form():
+	return (
+		'<!DOCTYPE html><head><meta charset=utf-8><title>Login</title></head>'
+		'<body><form method=POST><input name=token type=text><input type=submit></form></body>'
+		'</html>'
+	)
+
+@app.route('/login', methods=['POST'])
+@utils.token_exempt
+def login():
+	try:
+		token = request.form['token']
+	except KeyError:
+		# we don't need to have a fancy error class for this one because the user is intentionally fucking
+		# with the form
+		abort(HTTPStatus.UNAUTHORIZED)
+
+	if utils.validate_token(token):
+		session['authed'] = 1
+
+	return 'OK'
 
 class InvalidScaleFactorError(InvalidFormatError):
 	message = 'invalid scale factor'

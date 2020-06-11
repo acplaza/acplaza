@@ -1,3 +1,6 @@
+# generate this using secrets.token_urlsafe() or using pwgen(1)
+flask-secret-key = '...'
+
 # You can get your user id and password from
 # su/baas/<guid>.dat in save folder 8000000000000010.
 

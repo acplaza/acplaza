@@ -18,7 +18,7 @@ import wand.image
 import toml
 import asyncpg
 import syncpg
-from flask import current_app, g, request
+from flask import current_app, g, request, session
 from flask_limiter.util import get_ipaddr
 from werkzeug.exceptions import HTTPException
 
@@ -29,7 +29,9 @@ with open('config.toml') as f:
 from acnh.common import ACNHError
 
 def init_app(app):
+	app.secret_key = config['flask-secret-key']
 	app.config['JSON_SORT_KEYS'] = False
+	app.config['SESSION_COOKIE_SAMESITE'] = 'Strict'
 	app.json_encoder = CustomJSONEncoder
 	app.errorhandler(ACNHError)(handle_acnh_exception)
 	app.errorhandler(HTTPException)(handle_exception)
@@ -58,31 +60,56 @@ class IncorrectAuthorizationHeader(AuthorizationError):
 	message = 'invalid or incorrect Authorization header'
 	http_status = HTTPStatus.UNAUTHORIZED
 
+token_exempt_views = set()
+
+def token_exempt(view):
+	token_exempt_views.add(view.__module__ + '.' + view.__name__)
+	return view
+
 def process_authorization():
 	request.user_id = None
+	session.setdefault('authed', False)
 
-	if get_ipaddr() == '127.0.0.1':
+#	if get_ipaddr() == '127.0.0.1':
+#		return
+
+	if not request.endpoint:
+		return
+
+	view = current_app.view_functions.get(request.endpoint)
+	dest = view.__module__ + '.' + view.__name__
+	if dest in token_exempt_views:
 		return
 
 	if not request.headers.get('User-Agent'):
 		raise MissingUserAgentStringError
+
+	if session['authed']:
+		return
+
 	token = request.headers.get('Authorization')
 	if not token:
 		raise IncorrectAuthorizationHeader
 
-	try:
-		user_id, secret = parse_token(token)
-	except ValueError:
-		raise IncorrectAuthorizationHeader
-
-	db_secret = pg().fetchval(queries.secret(), user_id)
-	if db_secret is None:
-		raise IncorrectAuthorizationHeader
-
-	if not secrets.compare_digest(secret, db_secret):
+	if not validate_token(token):
 		raise IncorrectAuthorizationHeader
 
 	request.user_id = user_id
+
+def validate_token(token):
+	try:
+		user_id, secret = parse_token(token)
+	except ValueError:
+		return False
+
+	db_secret = pg().fetchval(queries.secret(), user_id)
+	if db_secret is None:
+		return False
+
+	if not secrets.compare_digest(secret, db_secret):
+		return False
+
+	return True
 
 def encode_token(user_id, secret):
 	return base64.b64encode(user_id.to_bytes(4, byteorder='big')).decode() + '.' + base64.b64encode(secret).decode()
