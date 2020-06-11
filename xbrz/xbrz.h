@@ -34,8 +34,8 @@ http://board.byuu.org/viewtopic.php?f=10&t=2248
 enum class ColorFormat //from high bits -> low bits, 8 bit per channel
 {
     RGB = 1,  //8 bit for each red, green, blue, upper 8 bits unused
-    ARGB = 2, //including alpha channel, BGRA byte order on little-endian machines
-    ARGB_UNBUFFERED = 3, //like ARGB, but without the one-time buffer creation overhead (ca. 100 - 300 ms) at the expense of a slightly slower scaling time
+    RGBA = 2, //including alpha channel, ABGR byte order on little-endian machines
+    RGBA_UNBUFFERED = 3, //like RGBA, but without the one-time buffer creation overhead (ca. 100 - 300 ms) at the expense of a slightly slower scaling time
 };
 
 const int SCALE_FACTOR_MAX = 6;
@@ -72,9 +72,6 @@ void xbrz_bilinearScale(const uint32_t* src, int srcWidth, int srcHeight,
 
 void xbrz_nearestNeighborScale(const uint32_t* src, int srcWidth, int srcHeight,
                           /**/  uint32_t* trg, int trgWidth, int trgHeight);
-
-void xbrz_argb_to_rgba(uint32_t* buf, size_t size);
-void xbrz_rgba_to_argb(uint32_t* buf, size_t size);
 
 //parameter tuning
 bool xbrz_equalColorTest(uint32_t col1, uint32_t col2, ColorFormat colFmt, double luminanceWeight, double equalColorTolerance);

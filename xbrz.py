@@ -29,12 +29,6 @@ uint32_p = ctypes.POINTER(ctypes.c_uint32)
 xbrz.xbrz_scale_defaults.argtypes = [ctypes.c_size_t, uint32_p, uint32_p, ctypes.c_int, ctypes.c_int, ctypes.c_int]
 xbrz.xbrz_scale_defaults.restype = None
 
-xbrz.xbrz_rgba_to_argb.argtypes = [uint32_p, ctypes.c_size_t]
-xbrz.xbrz_rgba_to_argb.restype = None
-
-xbrz.xbrz_argb_to_rgba.argtypes = [uint32_p, ctypes.c_size_t]
-xbrz.xbrz_argb_to_rgba.restype = None
-
 def scale(img, factor, width, height, color_format: ColorFormat):
 	"""Scale img, an array of width * height 32 bit ints. Return an array
 	of scale * width * scale * height 32 bit ints.

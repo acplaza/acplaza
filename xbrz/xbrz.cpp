@@ -31,7 +31,7 @@ uint32_t gradientRGB(uint32_t pixFront, uint32_t pixBack) //blend front color wi
 
 
 template <unsigned int M, unsigned int N> inline
-uint32_t gradientARGB(uint32_t pixFront, uint32_t pixBack) //find intermediate color between two colors with alpha channels (=> NO alpha blending!!!)
+uint32_t gradientRGBA(uint32_t pixFront, uint32_t pixBack) //find intermediate color between two colors with alpha channels (=> NO alpha blending!!!)
 {
     static_assert(0 < M && M < N && N <= 1000);
 
@@ -1085,7 +1085,7 @@ struct ColorDistanceRGB
     }
 };
 
-struct ColorDistanceARGB
+struct ColorDistanceRGBA
 {
     static double dist(uint32_t pix1, uint32_t pix2, double luminanceWeight)
     {
@@ -1112,7 +1112,7 @@ struct ColorDistanceARGB
 };
 
 
-struct ColorDistanceUnbufferedARGB
+struct ColorDistanceUnbufferedRGBA
 {
     static double dist(uint32_t pix1, uint32_t pix2, double luminanceWeight)
     {
@@ -1137,12 +1137,12 @@ struct ColorGradientRGB
     }
 };
 
-struct ColorGradientARGB
+struct ColorGradientRGBA
 {
     template <unsigned int M, unsigned int N>
     static void alphaGrad(uint32_t& pixBack, uint32_t pixFront)
     {
-        pixBack = gradientARGB<M, N>(pixFront, pixBack);
+        pixBack = gradientRGBA<M, N>(pixFront, pixBack);
     }
 };
 }
@@ -1175,35 +1175,35 @@ void xbrz_scale(size_t factor, const uint32_t* src, uint32_t* trg, int srcWidth,
             }
             break;
 
-        case ColorFormat::ARGB:
+        case ColorFormat::RGBA:
             switch (factor)
             {
                 case 2:
-                    return scaleImage<Scaler2x<ColorGradientARGB>, ColorDistanceARGB, OobReaderTransparent>(src, trg, srcWidth, srcHeight, cfg, yFirst, yLast);
+                    return scaleImage<Scaler2x<ColorGradientRGBA>, ColorDistanceRGBA, OobReaderTransparent>(src, trg, srcWidth, srcHeight, cfg, yFirst, yLast);
                 case 3:
-                    return scaleImage<Scaler3x<ColorGradientARGB>, ColorDistanceARGB, OobReaderTransparent>(src, trg, srcWidth, srcHeight, cfg, yFirst, yLast);
+                    return scaleImage<Scaler3x<ColorGradientRGBA>, ColorDistanceRGBA, OobReaderTransparent>(src, trg, srcWidth, srcHeight, cfg, yFirst, yLast);
                 case 4:
-                    return scaleImage<Scaler4x<ColorGradientARGB>, ColorDistanceARGB, OobReaderTransparent>(src, trg, srcWidth, srcHeight, cfg, yFirst, yLast);
+                    return scaleImage<Scaler4x<ColorGradientRGBA>, ColorDistanceRGBA, OobReaderTransparent>(src, trg, srcWidth, srcHeight, cfg, yFirst, yLast);
                 case 5:
-                    return scaleImage<Scaler5x<ColorGradientARGB>, ColorDistanceARGB, OobReaderTransparent>(src, trg, srcWidth, srcHeight, cfg, yFirst, yLast);
+                    return scaleImage<Scaler5x<ColorGradientRGBA>, ColorDistanceRGBA, OobReaderTransparent>(src, trg, srcWidth, srcHeight, cfg, yFirst, yLast);
                 case 6:
-                    return scaleImage<Scaler6x<ColorGradientARGB>, ColorDistanceARGB, OobReaderTransparent>(src, trg, srcWidth, srcHeight, cfg, yFirst, yLast);
+                    return scaleImage<Scaler6x<ColorGradientRGBA>, ColorDistanceRGBA, OobReaderTransparent>(src, trg, srcWidth, srcHeight, cfg, yFirst, yLast);
             }
             break;
 
-        case ColorFormat::ARGB_UNBUFFERED:
+        case ColorFormat::RGBA_UNBUFFERED:
             switch (factor)
             {
                 case 2:
-                    return scaleImage<Scaler2x<ColorGradientARGB>, ColorDistanceUnbufferedARGB, OobReaderTransparent>(src, trg, srcWidth, srcHeight, cfg, yFirst, yLast);
+                    return scaleImage<Scaler2x<ColorGradientRGBA>, ColorDistanceUnbufferedRGBA, OobReaderTransparent>(src, trg, srcWidth, srcHeight, cfg, yFirst, yLast);
                 case 3:
-                    return scaleImage<Scaler3x<ColorGradientARGB>, ColorDistanceUnbufferedARGB, OobReaderTransparent>(src, trg, srcWidth, srcHeight, cfg, yFirst, yLast);
+                    return scaleImage<Scaler3x<ColorGradientRGBA>, ColorDistanceUnbufferedRGBA, OobReaderTransparent>(src, trg, srcWidth, srcHeight, cfg, yFirst, yLast);
                 case 4:
-                    return scaleImage<Scaler4x<ColorGradientARGB>, ColorDistanceUnbufferedARGB, OobReaderTransparent>(src, trg, srcWidth, srcHeight, cfg, yFirst, yLast);
+                    return scaleImage<Scaler4x<ColorGradientRGBA>, ColorDistanceUnbufferedRGBA, OobReaderTransparent>(src, trg, srcWidth, srcHeight, cfg, yFirst, yLast);
                 case 5:
-                    return scaleImage<Scaler5x<ColorGradientARGB>, ColorDistanceUnbufferedARGB, OobReaderTransparent>(src, trg, srcWidth, srcHeight, cfg, yFirst, yLast);
+                    return scaleImage<Scaler5x<ColorGradientRGBA>, ColorDistanceUnbufferedRGBA, OobReaderTransparent>(src, trg, srcWidth, srcHeight, cfg, yFirst, yLast);
                 case 6:
-                    return scaleImage<Scaler6x<ColorGradientARGB>, ColorDistanceUnbufferedARGB, OobReaderTransparent>(src, trg, srcWidth, srcHeight, cfg, yFirst, yLast);
+                    return scaleImage<Scaler6x<ColorGradientRGBA>, ColorDistanceUnbufferedRGBA, OobReaderTransparent>(src, trg, srcWidth, srcHeight, cfg, yFirst, yLast);
             }
             break;
     }
@@ -1217,10 +1217,10 @@ bool xbrz_equalColorTest(uint32_t col1, uint32_t col2, ColorFormat colFmt, doubl
     {
         case ColorFormat::RGB:
             return ColorDistanceRGB::dist(col1, col2, luminanceWeight) < equalColorTolerance;
-        case ColorFormat::ARGB:
-            return ColorDistanceARGB::dist(col1, col2, luminanceWeight) < equalColorTolerance;
-        case ColorFormat::ARGB_UNBUFFERED:
-            return ColorDistanceUnbufferedARGB::dist(col1, col2, luminanceWeight) < equalColorTolerance;
+        case ColorFormat::RGBA:
+            return ColorDistanceRGBA::dist(col1, col2, luminanceWeight) < equalColorTolerance;
+        case ColorFormat::RGBA_UNBUFFERED:
+            return ColorDistanceUnbufferedRGBA::dist(col1, col2, luminanceWeight) < equalColorTolerance;
     }
     assert(false);
     return false;
@@ -1242,34 +1242,6 @@ void xbrz_nearestNeighborScale(const uint32_t* src, int srcWidth, int srcHeight,
     nearestNeighborScale(src, srcWidth, srcHeight, srcWidth * sizeof(uint32_t),
                          trg, trgWidth, trgHeight, trgWidth * sizeof(uint32_t),
     0, trgHeight, [](uint32_t pix) { return pix; });
-}
-
-
-void xbrz_argb_to_rgba(uint32_t* buf, size_t size)
-{
-    unsigned char r, g, b, a;
-    for (int i = 0; i < size; i++)
-    {
-        r = getRed(buf[i]);
-        g = getGreen(buf[i]);
-        b = getBlue(buf[i]);
-        a = getAlpha(buf[i]);
-        buf[i] = (r << 24) | (g << 16) | (b << 8) | a;
-    }
-}
-
-
-void xbrz_rgba_to_argb(uint32_t* buf, size_t size)
-{
-    unsigned char a, r, g, b;
-    for (int i = 0; i < size; i++)
-    {
-        a = getByte(buf[i], 0);
-        r = getByte(buf[i], 3);
-        g = getByte(buf[i], 2);
-        b = getByte(buf[i], 1);
-        buf[i] = makePixel(a, r, g, b);
-    }
 }
 }
 
