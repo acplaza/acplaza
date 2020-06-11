@@ -6,7 +6,7 @@ import secrets
 import time
 from http import HTTPStatus
 from functools import partial
-from typing import Iterable
+from typing import Dict, Iterable, Tuple
 
 import wand.image
 
@@ -97,39 +97,70 @@ class TiledImageTooBigError(InvalidImageError):
 		if img.width // WIDTH * img.height // HEIGHT > MAX_DESIGN_TILES:
 			raise cls
 
-ISLAND_NAMES = [
-	'The Cloud',
-	'Black Lives Matter',
-	'TRAHR',
-	'ACAB',
-]
+def create_image(design, **kwargs):
+	return [create_basic_design, create_pro_design][design.pro](design, **kwargs)
 
-island_name = partial(random.choice, ISLAND_NAMES)
-
-def create_image(*, author_name, image_name, image: wand.image.Image, scale: bool) -> Iterable[int]:
-	"""Upload a design. Scale controls whether to tile or scale the image. Returns an iterable of design IDs."""
-	if image.size > SIZE and not scale:
-		TiledImageTooBigError.validate(image)
-		# backwards so that the first image shows up first in game
-		designs = list(encode.tile(image.clone()))[::-1]
-	else:  # scale if necessary
-		designs = [image.clone()]
-
+def create_pro_design(design):
+	"""Upload a pro design. Returns an iterable for consistency with create_basic_design."""
 	deletion_token = secrets.token_bytes()
 	image_id = pg().fetchval(
 		queries.create_image(),
-		author_name, image_name, image.width, image.height, [bytearray(image.export_pixels())], deletion_token,
+
+		design.author_name,
+		design.design_name,
+		None,
+		None,
+		design.type_code,
+		[bytearray(image.export_pixels()) for image in design.layer_images.values()],
+		deletion_token,
 	)
-	island_name_ = island_name()
-	for i, design in zip(reversed(range(1, len(designs) + 1)), designs):
-		design_name = f'{image_name} {i}' if len(designs) > 1 else image_name
+	garbage_collect_designs(1, pro=True)
+	was_quantized, encoded = encode.encode(design)
+	design_id = api.create_design(encoded)
+	create_design(image_id=image_id, design_id=design_id, position=0, pro=True)
+	yield image_id
+	yield was_quantized, design_id
+
+def create_basic_design(design, *, scale: bool):
+	"""Upload a basic design. Scale controls whether to tile or scale the image. Returns an iterable of design IDs."""
+	image = design.layer_images['0']
+	if image.size > SIZE and not scale:
+		TiledImageTooBigError.validate(image)
+		# backwards so that the first image shows up first in game
+		images = list(encode.tile(image.clone()))[::-1]
+	else:  # scale if necessary
+		images = [image.clone()]
+
+	deletion_token = secrets.token_bytes()
+	# XXX is it a Design class or an Image class. It's both! Is that OK?
+	image_id = pg().fetchval(
+		queries.create_image(),
+
+		design.author_name,
+		design.design_name,
+		image.width,
+		image.height,
+		design.type_code,
+		[bytearray(image.export_pixels())],
+		deletion_token,
+	)
+	yield image_id
+	for i, image in zip(reversed(range(1, len(images) + 1)), images):
+		sub_design = encode.BasicDesign(
+			design_name=design.design_name,
+			island_name=design.island_name,
+			author_name=design.author_name,
+			layers={'0': image},
+		)
+		design_name = f'{design.design_name} {i}' if len(images) > 1 else design.design_name
 		# we do this on each loop in case someone uploaded a few more designs in between iterations
-		garbage_collect_designs(len(designs) - (i - 1), pro=False)
+		garbage_collect_designs(len(images) - (i - 1), pro=False)
 		# designs get out of order if we post them too fast
 		time.sleep(0.5)
-		design_id = api.create_design(encode.encode(island_name_, design_name, design))
+		was_quantized, encoded = encode.encode(sub_design)
+		design_id = api.create_design(encoded)
 		create_design(image_id=image_id, design_id=design_id, position=i, pro=False)
-		yield design_id
+		yield was_quantized, design_id
 
 def create_design(*, image_id, design_id, position, pro):
 	pg().execute(queries.create_design(), image_id, design_id, position, pro)

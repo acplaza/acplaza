@@ -51,8 +51,8 @@ WHERE image_id = $1
 
 -- :macro create_image()
 -- params: author_name, image_name, width, height, layers, deletion_token
-INSERT INTO images (author_name, image_name, width, height, layers, deletion_token)
-VALUES ($1, $2, $3, $4, $5, $6)
+INSERT INTO images (author_name, image_name, width, height, type_code, layers, deletion_token)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
 RETURNING image_id
 -- :endmacro
 

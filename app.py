@@ -2,11 +2,14 @@
 
 # © 2020 io mintz <io@mintz.cc>
 
+import contextlib
 import datetime as dt
 import io
 import json
+import random
 import re
 import urllib.parse
+from functools import partial
 from http import HTTPStatus
 
 import wand.image
@@ -22,9 +25,10 @@ import acnh.designs.db as designs_db
 import utils
 import tarfile_stream
 import xbrz
-from acnh.common import ACNHError, InvalidFormatError
+from acnh.common import InvalidFormatError
 from acnh.designs.api import DesignError, InvalidDesignCodeError
 from acnh.designs.db import ImageError
+from acnh.designs.encode import BasicDesign, Design, MissingLayerError
 
 app = Flask(__name__)
 utils.init_app(app)
@@ -74,7 +78,7 @@ def design_archive(design_code):
 
 		for i, image in designs_render.render_layers(body):
 			tarinfo = tarfile_stream.TarInfo(f'{design_name}/{i}.png')
-			tarinfo.mtime = dt.datetime.utcnow().timestamp()
+			tarinfo.mtime = data['updated_at']
 
 			image = maybe_scale(image)
 			out = io.BytesIO()
@@ -140,8 +144,6 @@ def list_designs(creator_id):
 
 	return page
 
-# XXX maybe 10 error codes per category isn't enough, because I want to split this up in two,
-# but then I wouldn't have room for InvalidImageError
 class InvalidImageArgument(ImageError):
 	code = 36
 	message = 'missing or invalid required image argument {.argument_name}'
@@ -156,79 +158,107 @@ class InvalidImageArgument(ImageError):
 		d['error'] = d['error'].format(self)
 		return d
 
-class InvalidImageLayerNameError(ImageError, InvalidFormatError):
-	code = 37
-	message = 'Invalid image layer name format.'
-	regex = re.compile('[0-9]')
-
-class MissingImageLayersError(ImageError):
-	code = 38
-	message = (
-		'Payload was missing one or more image layers. '
-		'Make sure your layer names are continuous non-negative integers starting at 0.'
-	)
-	status = HTTPStatus.BAD_REQUEST
-
+# TODO add which layer failed
 class InvalidImageError(ImageError):
 	code = 39
 	message = 'One or more layers submitted represented an invalid image.'
 	status = HTTPStatus.BAD_REQUEST
 
 class InvalidImageIdError(ImageError, InvalidFormatError):
-	code = 41  # rip my nice x/10 = category system
+	code = 41  # XXX rip my nice "x/10 = category" system
 	message = 'Invalid image ID.'
 	regex = re.compile('[0-9]+')
+
+ISLAND_NAMES = [
+	'The Cloud',
+	'Black Lives Matter',
+	'TRAHR',
+	'ACAB',
+]
+
+island_name = partial(random.choice, ISLAND_NAMES)
 
 @app.route('/images', methods=['POST'])
 @limiter.limit('1 per 15s')
 def create_image():
 	try:
-		name = request.args['image_name']
+		image_name = request.args['image_name']
 	except KeyError:
 		raise InvalidImageArgument('image_name')
 
+	author_name = request.args.get('author_name', 'Anonymous')  # we are legion
+
+	try:
+		design_type_name = request.args['design_type']
+	except KeyError:
+		return create_basic_image(image_name, author_name)
+	else:
+		if design_type_name == 'basic-design':
+			return create_basic_image(image_name, author_name)
+		return create_pro_image(image_name, author_name, design_type_name)
+
+def create_pro_image(image_name, author_name, design_type_name):
+	try:
+		layers = {filename: wand.image.Image(file=file) for filename, file in request.files.items()}
+	except wand.image.WandException:
+		raise InvalidImageError
+
+	design = Design(
+		design_type_name,
+		island_name=island_name(),
+		author_name=author_name,
+		design_name=image_name,
+		layers=layers,
+	)
+	def gen():
+		with contextlib.ExitStack() as stack:
+			for img in layers.values():
+				stack.enter_context(img)
+			yield from format_created_design_results(designs_db.create_image(design))
+
+	return current_app.response_class(stream_with_context(gen()), mimetype='text/plain')
+
+def create_basic_image(image_name, author_name):
 	try:
 		resize = tuple(map(int, request.args['resize'].split('x')))
 	except KeyError:
-		resize = None
+		pass
 	except ValueError:
 		raise InvalidImageArgument('resize')
 	else:
 		if len(resize) != 2:
 			raise InvalidImageArgument('resize')
 
-	author_name = request.args.get('author_name', 'Anonymous')  # we are legion
 	scale = 'scale' in request.args
-	if len(request.files) > 1:
-		# just until we get pro designs goin'
-		abort(HTTPStatus.BAD_REQUEST)
-	if '0' not in request.files:
-		abort(HTTPStatus.BAD_REQUEST)
 
 	try:
-		img = wand.image.Image(blob=request.files['0'].read())
-	except wand.image.Exception:
+		img = wand.image.Image(file=request.files['0'])
+	except wand.image.WandException:
 		raise InvalidImageError
+	except KeyError:
+		raise MissingLayerError(BasicDesign.external_layers[0])
 
-	if resize is not None:
+	if resize is not None and not scale:
 		img.transform(resize=f'{resize[0]}x{resize[1]}')
 	# do this again now because custom exception handlers don't run for generators ¯\_(ツ)_/¯
 	designs_db.TiledImageTooBigError.validate(img)
 
+	design = BasicDesign(island_name=island_name(), author_name=author_name, design_name=image_name, layers={'0': img})
+
 	def gen():
 		with img:
-			for design_id in designs_db.create_image(
-				author_name=author_name,
-				image_name=name,
-				image=img,
-				scale=scale,
-			):
-				yield designs_api.design_code(design_id) + '\n'
+			yield from format_created_design_results(designs_db.create_image(design, scale=scale))
 
 	# Note: this is currently the only method (other than the rendering methods) which does *not* return JSON.
 	# This is due to its iterative nature. I considered using JSON anyway, but very few libraries
-	# support iterative JSON decoding, and we don't need anything other than an array of strings anyway.
+	# support iterative JSON decoding, and we don't need anything other than an array anyway.
 	return current_app.response_class(stream_with_context(gen()), mimetype='text/plain')
+
+def format_created_design_results(gen):
+	image_id = next(gen)
+	yield str(image_id) + '\n'
+	for was_quantized, design_id in gen:
+		yield f'{int(was_quantized)},{designs_api.design_code(design_id)}\n'
 
 @app.route('/image/<image_id>')
 def image(image_id):

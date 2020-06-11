@@ -7,10 +7,15 @@ CREATE TABLE images (
 	author_name TEXT,
 	image_name TEXT,
 	created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-	width SMALLINT NOT NULL,
-	height SMALLINT NOT NULL,
+	width SMALLINT,
+	height SMALLINT,
 	layers BYTEA[] NOT NULL,
-	pro BOOLEAN GENERATED ALWAYS AS (array_length(layers, 1) > 1) STORED
+	pro BOOLEAN GENERATED ALWAYS AS (array_length(layers, 1) > 1) STORED,
+
+	type_code SMALLINT NOT NULL,
+
+	-- if one is provided, both must be
+	CHECK ((pro AND width IS NULL AND height IS NULL) OR (not pro AND width IS NOT NULL AND height IS NOT NULL))
 );
 
 CREATE INDEX latest_images ON images (created_at DESC);

@@ -43,10 +43,7 @@ class InvalidCreatorIdError(DesignError, InvalidFormatError):
 class InvalidDesignError(DesignError):
 	code = 26
 	message = 'invalid design'
-
-class InvalidPaletteError(DesignError):
-	code = 27
-	message = 'limit 15 colors'
+	http_status = HTTPStatus.BAD_REQUEST
 
 def design_id(design_code):
 	code = design_code.replace('-', '')
@@ -91,13 +88,19 @@ def download_design(design_id, partial=False):
 
 	url = urllib.parse.urlparse(headers['body'])
 	resp = acnh().request('GET', url.path + '?' + url.query)
-	return msgpack.loads(resp.content)
+	data = msgpack.loads(resp.content)
+	data['author_name'] = headers['design_player_name']
+	data['author_id'] = headers['design_player_id']
+	data['created_at'] = headers['created_at']
+	data['updated_at'] = headers['updated_at']
+	return data
 
 def list_designs(creator_id: int, *, pro: bool):
 	resp = acnh().request('GET', '/api/v2/designs', params={
 		'offset': 0,
 		'limit': 120,
 		'q[player_id]': creator_id,
+		'q[pro]': ('false', 'true')[pro],
 		'with_binaries': 'false',
 	})
 	resp.raise_for_status()
@@ -116,4 +119,5 @@ def create_design(design_data) -> int:
 		raise InvalidDesignError
 	resp.raise_for_status()
 	data = msgpack.loads(resp.content)
+	print(data)
 	return data['id']

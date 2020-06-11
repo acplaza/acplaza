@@ -31,6 +31,58 @@ Returns a PNG render of the specified layer.
 - /designs/:creator-id Lists the designs posted by the given creator ID. Query parameters:
   - pro: true/false. whether to list the creator's Pro designs only. If false only normal designs will be listed.
 
+### Images
+
+“Images” are a concept specific to this software which represent one large image tiled, scaled, or quantized into 
+one or more in-game designs.
+
+- POST /images<br>
+  Query parameters:
+  - `image_name`
+  - `author_name`
+  - `scale`: whether to scale the image if it's larger than 32×32. Only valid if `design_type` is `basic_design`.
+    If false (the default) then the image will be tiled into multiple designs.
+  - `resize`: resize the image in an aspect-ratio preserving way before any other processing. Only valid if
+    `scale` is false. Useful for tiling large images.
+  - `design_type`: required. Defaults to `basic-design` (ie a non-Pro design). Valid options:
+  The image data must be uploaded as `multipart/form-data`, with each file name corresponding to a layer name.
+  A wide variety of image formats may be used (anything that ImageMagick supports).
+  The response for this endpoint is streamed as text/plain. The first line of the stream is the resulting image ID.
+  Each subsequent line is formatted like `was_quantized,design_code`. For example: `0,5RJJ-TXK3-JWXV`.
+
+### Valid Design Types
+
+The names of the layers for these design types are used as the filename for each part in the `multipart/form-data`
+upload. For example, to use `curl` to upload a Brimmed Hat:
+
+```
+curl \
+	-H "Authorization: $ACNH_TOKEN" \
+	-F top=@top.png \
+	-F middle=@middle.png \
+	-F bottom=@bottom.png \
+	'https://acnh-api.ashitty.website/images?design_type=brimmed-hat&image_name=My%20Brimmed%20Hat&author_name=iomintz'
+```
+
+**TODO finish documenting these**
+
+- basic-design: a single 32×32 layer, called `0`. The singular non-Pro design type.
+- tank-top: 2 layers: `front` and `back`.
+- short-sleeve-tee
+- long-sleeve-dress-shirt
+- sweater
+- hoodie
+- coat
+- sleeveless-dress
+- short-sleeve-dress
+- long-sleeve-dress
+- round-dress
+- balloon-hem-dress
+- robe
+- brimmed-cap
+- knit-cap
+- brimmed-hat
+
 ## Setup
 
 First copy config.example.toml to config.toml. Now you will need a lot of information from your Switch

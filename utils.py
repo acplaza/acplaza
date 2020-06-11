@@ -19,6 +19,7 @@ import toml
 import asyncpg
 import syncpg
 from flask import current_app, g, request
+from flask_limiter.util import get_ipaddr
 from werkzeug.exceptions import HTTPException
 
 # config comes first to resolve circular imports
@@ -30,7 +31,7 @@ from acnh.common import ACNHError
 def init_app(app):
 	app.config['JSON_SORT_KEYS'] = False
 	app.json_encoder = CustomJSONEncoder
-	app.errorhandler(ACNHError)(handle_acnh_exception)
+#	app.errorhandler(ACNHError)(handle_acnh_exception)
 	app.errorhandler(HTTPException)(handle_exception)
 	app.teardown_appcontext(close_pgconn)
 	app.before_request(process_authorization)
@@ -59,6 +60,9 @@ class IncorrectAuthorizationHeader(AuthorizationError):
 
 def process_authorization():
 	request.user_id = None
+
+	if get_ipaddr() == '127.0.0.1':
+		return
 
 	if not request.headers.get('User-Agent'):
 		raise MissingUserAgentStringError
