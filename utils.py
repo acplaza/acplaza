@@ -31,7 +31,7 @@ from acnh.common import ACNHError
 def init_app(app):
 	app.config['JSON_SORT_KEYS'] = False
 	app.json_encoder = CustomJSONEncoder
-#	app.errorhandler(ACNHError)(handle_acnh_exception)
+	app.errorhandler(ACNHError)(handle_acnh_exception)
 	app.errorhandler(HTTPException)(handle_exception)
 	app.teardown_appcontext(close_pgconn)
 	app.before_request(process_authorization)
