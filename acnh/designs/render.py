@@ -29,11 +29,11 @@ def gen_palette(raw_image):
 def _render_layer(raw_image, palette, layer) -> wand.image.Image:
 	palette = gen_palette(raw_image)
 
-	im = wand.image.Image(width=STANDARD_WIDTH, height=STANDARD_HEIGHT)
+	im = wand.image.Image(width=WIDTH, height=HEIGHT)
 
 	out = io.BytesIO()
 
-	for pixi, byte in zip(range(0, STANDARD_WIDTH * STANDARD_HEIGHT, 2), layer):
+	for pixi, byte in zip(range(0, WIDTH * HEIGHT, 2), layer):
 		b1 = byte & 0xF
 		b2 = (byte >> 4) & 0xF
 
