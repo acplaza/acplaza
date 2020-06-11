@@ -40,7 +40,7 @@ limiter = Limiter(app, key_func=get_ipaddr)
 def login_form():
 	return (
 		'<!DOCTYPE html><head><meta charset=utf-8><title>Login</title></head>'
-		'<body><form method=POST><input name=token type=text><input type=submit></form></body>'
+		'<body><form method=POST><input name=token type=text autocomplete=off><input type=submit></form></body>'
 		'</html>'
 	)
 
