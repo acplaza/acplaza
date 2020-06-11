@@ -1,4 +1,4 @@
-CPPFLAGS=-std=gnu++17 -O3
+CPPFLAGS=-std=gnu++17 -O3 -march=native -mtune=native
 CPP=c++
 
 xbrz.so: xbrz.cpp
