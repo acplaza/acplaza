@@ -9,6 +9,7 @@ import pickle
 import json
 import secrets
 import subprocess
+import os
 import sys
 from http import HTTPStatus
 
@@ -25,6 +26,10 @@ from werkzeug.exceptions import HTTPException
 # config comes first to resolve circular imports
 with open('config.toml') as f:
 	config = toml.load(f)
+
+if os.name != 'nt':
+	# this is pretty gay but it's necessary to make uwsgi work since sys.executable is uwsgi otherwise
+	sys.executable = subprocess.check_output('which python3', shell=True, encoding='utf-8').rstrip()
 
 from acnh.common import ACNHError
 
