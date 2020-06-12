@@ -98,7 +98,7 @@ class Design:
 			if type is None:
 				raise TypeError('Design expected 1 positional argument, 0 were passed')
 
-			subcls = [cls.design_types, cls.design_type_codes][isinstance(type, int)][type]
+			subcls = (cls.design_type_codes if isinstance(type, int) else cls.design_types)[type]
 			if not kwargs:
 				return subcls
 			return subcls(**kwargs)

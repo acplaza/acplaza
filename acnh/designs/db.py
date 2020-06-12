@@ -98,7 +98,7 @@ class TiledImageTooBigError(InvalidImageError):
 			raise cls
 
 def create_image(design, **kwargs):
-	return [create_basic_design, create_pro_design][design.pro](design, **kwargs)
+	return (create_pro_design if design.pro else create_basic_design)(design, **kwargs)
 
 def create_pro_design(design):
 	"""Upload a pro design. Returns an iterable for consistency with create_basic_design."""
