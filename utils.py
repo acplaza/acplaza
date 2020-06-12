@@ -75,8 +75,8 @@ def process_authorization():
 	request.user_id = None
 	session.setdefault('authed', False)
 
-#	if get_ipaddr() == '127.0.0.1':
-#		return
+	if get_ipaddr() == '127.0.0.1':
+		return
 
 	if not request.endpoint:
 		return
