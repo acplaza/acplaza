@@ -187,18 +187,14 @@ class TankTop(Design):
 
 class ShortSleeveTee(Design):
 	type_code = 101
-	external_layers = [
-		Layer('back', STANDARD),
-		Layer('front', STANDARD),
+	external_layers = TankTop.external_layers + [
 		Layer('right-sleeve', SHORT_SLEEVE),
 		Layer('left-sleeve', SHORT_SLEEVE),
 	]
 
 class LongSleeveDressShirt(Design):
 	type_code = 100
-	external_layers = [
-		Layer('back', STANDARD),
-		Layer('front', STANDARD),
+	external_layers = TankTop.external_layers + [
 		Layer('right-sleeve', LONG_SLEEVE),
 		Layer('left-sleeve', LONG_SLEEVE),
 	]
@@ -212,20 +208,18 @@ class Hoodie(Design):
 	# wait where's the hood? lol
 	external_layers = Sweater.external_layers
 
-class Coat(Design):
-	type_code = 105
-	external_layers = [
-		Layer('back', LONG_BODY),
-		Layer('front', LONG_BODY),
-		Layer('right-sleeve', LONG_SLEEVE),
-		Layer('left-sleeve', LONG_SLEEVE),
-	]
-
 class SleevelessDress(Design):
 	type_code = 107
 	external_layers = [
 		Layer('back', LONG_BODY),
 		Layer('front', LONG_BODY),
+	]
+
+class Coat(Design):
+	type_code = 105
+	external_layers = SleevelessDress.external_layers + [
+		Layer('right-sleeve', LONG_SLEEVE),
+		Layer('left-sleeve', LONG_SLEEVE),
 	]
 
 class ShortSleeveDress(Design):
@@ -237,10 +231,7 @@ class ShortSleeveDress(Design):
 
 class LongSleeveDress(Design):
 	type_code = 108
-	external_layers = SleevelessDress.external_layers + [
-		Layer('right-sleeve', LONG_SLEEVE),
-		Layer('left-sleeve', LONG_SLEEVE),
-	]
+	external_layers = Coat.external_layers
 
 class RoundDress(Design):
 	type_code = 110
