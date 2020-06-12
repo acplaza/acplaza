@@ -45,8 +45,6 @@ class LayerCorrespondence:
 class Layer:
 	name: str
 	size: Tuple[int, int]
-	# None means "to be filled in later"
-	position: Optional[int] = field(default=None)
 
 	def as_wand(self) -> wand.image.Image:
 		im = wand.image.Image(width=self.size[0], height=self.size[1])
