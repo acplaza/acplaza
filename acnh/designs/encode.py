@@ -30,12 +30,22 @@ class InvalidLayerNameError(DesignError):
 		d['valid_layer_names'] = self.valid_layer_names
 		return d
 
+XY = Tuple[int, int]
+
+@dataclass
+class LayerCorrespondence:
+	internal_idx: int
+	external_name: str
+	internal_pos: XY
+	external_pos: XY
+	dimensions: XY
+
 @dataclass
 class Layer:
 	name: str
 	size: Tuple[int, int]
 	# None means "to be filled in later"
-	position: int = field(default=None)
+	position: Optional[int] = field(default=None)
 
 	def as_wand(self) -> wand.image.Image:
 		im = wand.image.Image(width=self.size[0], height=self.size[1])
@@ -55,6 +65,7 @@ class Design:
 	external_layer_names: ClassVar[Dict[str, Layer]]
 	# the layers that are sent to the API
 	internal_layers: ClassVar[List[Optional[Layer]]]
+	correspondence: ClassVar[Optional[List[LayerCorrespondence]]]
 
 	island_name: str
 	design_name: str
@@ -69,11 +80,12 @@ class Design:
 		if not hasattr(cls, 'internal_layers'):
 			cls.internal_layers = [Layer(str(i), l.size) for i, l in enumerate(cls.external_layers)]
 
-		external_layer_names = cls.external_layer_names = {}
-		for i, layer in enumerate(cls.external_layers):
-			if layer is not None:
-				external_layer_names[layer.name] = layer
-				layer.position = i
+		if not hasattr(cls, 'correspondence'):
+			cls.correspondence = None
+
+		cls.external_layer_names = {layer.name: layer for layer in cls.external_layers}
+
+		cls.one_to_one = cls.correspondence is None
 
 	def __new__(cls, type=None, **kwargs):
 		# this is really two constructors:
@@ -101,18 +113,48 @@ class Design:
 		return self
 
 	@classmethod
-	def _parse_subclass_init_kwargs(cls, *, author_name, island_name, design_name, layers):
+	def _parse_subclass_init_kwargs(cls, *, author_name=None, island_name=None, design_name=None, layers):
 		return author_name, island_name, design_name, layers
 
 	def internalize(self) -> List[wand.image.Image]:
-		return list(self.layer_images.values())
+		if self.one_to_one:
+			return list(self.layer_images.values())
+
+		out = list(map(Layer.as_wand, self.internal_layers))
+		for c in self.correspondence:
+			dst = out[c.internal_idx]
+			dst_position = c.internal_pos
+			src = self.layer_images[c.external_name]
+			src_position = c.external_pos
+			self.copy(dst, src, dst_position, src_position, c.dimensions)
+
+		return out
 
 	@classmethod
-	def externalize(cls, *, internal_layers: List[wand.image.Image], **kwargs) -> 'Design':
-		return cls(
-			layers={cls.external_layers[i].name: img for i, img in enumerate(internal_layers)},
-			**kwargs,
-		)
+	def externalize(cls, internal_layers: List[wand.image.Image], **kwargs) -> 'Design':
+		if cls.one_to_one:
+			return cls(
+				layers={cls.external_layers[i].name: img for i, img in enumerate(internal_layers)},
+				**kwargs,
+			)
+
+		out = {layer.name: layer.as_wand() for layer in cls.external_layers}
+		for c in cls.correspondence:
+			dst = out[c.external_name]
+			dst_position = c.external_pos
+			src = internal_layers[c.internal_idx]
+			src_position = c.internal_pos
+			cls.copy(dst, src, dst_position, src_position, c.dimensions)
+
+		return cls(layers=out, **kwargs)
+
+	@classmethod
+	def copy(cls, dst, src, dst_position, src_position, dimensions):
+		width, height = dimensions
+		x, y = src_position
+		x_slice = slice(x, x + width)
+		y_slice = slice(y, y + height)
+		dst.composite(src[x_slice, y_slice], *dst_position)
 
 	def validate(self):
 		for layer_name, layer in self.external_layer_names.items():
@@ -221,8 +263,16 @@ class BrimmedCap(Design):
 		Layer('brim', (44, 21)),
 	]
 	internal_layers = [Layer(str(i), STANDARD) for i in range(4)]
-
-	# TODO conversion methods
+	correspondence = [
+		LayerCorrespondence(0, 'front', (0, 0), (0, 0), STANDARD),
+		LayerCorrespondence(1, 'front', (0, 0), (32, 0), (12, 32)),
+		LayerCorrespondence(2, 'front', (0, 0), (0, 32), (32, 9)),
+		LayerCorrespondence(3, 'front', (0, 0), (32, 32), (12, 9)),
+		LayerCorrespondence(1, 'back', (12, 0), (0, 0), (20, 32)),
+		LayerCorrespondence(3, 'back', (12, 0), (0, 32), (20, 12)),
+		LayerCorrespondence(2, 'brim', (0, 11), (0, 0), (32, 21)),
+		LayerCorrespondence(3, 'brim', (0, 11), (32, 0), (12, 21)),
+	]
 
 class KnitCap(Design):
 	type_code = 113
@@ -234,26 +284,12 @@ class KnitCap(Design):
 		Layer('2', (32, 21)),
 		Layer('3', (32, 21)),
 	]
-
-	def internalize(self) -> List[wand.image.Image]:
-		img = self.layer_images['cap']
-		return [
-			img[0:32, 0:32],
-			img[32:64, 0:32],
-			img[0:32, 32:53],
-			img[32:64, 32:53],
-		]
-
-	@classmethod
-	def externalize(cls, *, internal_layers: List[wand.image.Image], **kwargs) -> 'KnitCap':
-		external_layers = {}
-		width, height = self.external_layers[0].size
-		cap = external_layers['cap'] = wand.image.Image(width=width, height=height)
-		cap.composite(internal_layers[0], 0, 0)
-		cap.composite(internal_layers[1], 32, 0)
-		cap.composite(internal_layers[2], 0, 32)
-		cap.composite(internal_layers[3], 32, 32)
-		return cls(layers=external_layers, **kwargs)
+	correspondence = [
+		LayerCorrespondence(0, 'cap', (0, 0), (0, 0), STANDARD),
+		LayerCorrespondence(0, 'cap', (0, 0), (32, 0), STANDARD),
+		LayerCorrespondence(0, 'cap', (0, 0), (0, 32), STANDARD),
+		LayerCorrespondence(0, 'cap', (0, 0), (32, 32), STANDARD),
+	]
 
 class BrimmedHat(Design):
 	type_code = 114
@@ -263,43 +299,16 @@ class BrimmedHat(Design):
 		Layer('bottom', (64, 9)),
 	]
 	internal_layers = [Layer(str(i), STANDARD) for i in range(4)]
-
-	def internalize(self) -> List[wand.image.Image]:
-		out = list(map(Layer.as_wand, self.internal_layers))
-
-		top, middle, bottom = (self.layer_images[k] for k in ('top', 'middle', 'bottom'))
-
-		out[0].composite(top[0:18, 0:32], 14, 0)
-		out[1].composite(top[18:36, 0:32], 0, 0)
-		out[2].composite(top[0:18, 32:36], 14, 0)
-		out[3].composite(top[18:36, 32:36], 0, 0)
-
-		out[2].composite(middle[0:32, 0:19], 0, 4)
-		out[3].composite(middle[32:64, 0:19], 0, 4)
-
-		out[2].composite(bottom[0:32, 0:9], 0, 23)
-		out[3].composite(bottom[32:64, 0:9], 0, 23)
-
-		return out
-
-	@classmethod
-	def externalize(cls, internal_layers: List[wand.image.Image], **kwargs) -> 'BrimmedHat':
-		a, b, c, d = internal_layers
-		out = {}
-		out['top'], out['middle'], out['bottom'] = map(Layer.as_wand, cls.external_layers)
-
-		out['top'].composite(a[14:32, 0:32], 0, 0)
-		out['top'].composite(b[0:18, 0:32], 14, 0)
-		out['top'].composite(c[14:32, 0:4], 0, 32)
-		out['top'].composite(d[0:18, 0:4], 18, 32)
-
-		out['middle'].composite(c[0:32, 4:22], 0, 0)
-		out['middle'].composite(d[32:64, 4:22], 32, 0)
-
-		out['bottom'].composite(d[0:32, 0:9], 0, 0)
-		out['bottom'].composite(d[32:64, 0:9], 32, 0)
-
-		return cls(layers=out, **kwargs)
+	correspondence = [
+		LayerCorrespondence(0, 'top', (14, 0), (0, 0), (18, 32)),
+		LayerCorrespondence(1, 'top', (0, 0), (18, 0), (18, 32)),
+		LayerCorrespondence(2, 'top', (14, 0), (0, 32), (18, 4)),
+		LayerCorrespondence(3, 'top', (0, 0), (18, 32), (18, 4)),
+		LayerCorrespondence(2, 'middle', (0, 4), (0, 0), (32, 19)),
+		LayerCorrespondence(3, 'middle', (0, 4), (32, 0), (32, 19)),
+		LayerCorrespondence(2, 'bottom', (0, 23), (0, 0), (32, 9)),
+		LayerCorrespondence(3, 'bottom', (0, 23), (32, 0), (32, 9)),
+	]
 
 class InvalidLayerError(DesignError):
 	layer: Layer
