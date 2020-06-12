@@ -21,9 +21,10 @@ class InvalidLayerNameError(DesignError):
 	code = 37
 	message = 'Invalid image layer name.'
 	valid_layer_names: List[str]
+	http_status = HTTPStatus.BAD_REQUEST
 
 	def __init__(self, design):
-		self.valid_layer_names = list(design.external_layers)
+		self.valid_layer_names = list(design.external_layer_names)
 
 	def to_dict(self):
 		d = super().to_dict()

@@ -28,7 +28,7 @@ import xbrz
 from acnh.common import InvalidFormatError
 from acnh.designs.api import DesignError, InvalidDesignCodeError
 from acnh.designs.db import ImageError
-from acnh.designs.encode import BasicDesign, Design, MissingLayerError
+from acnh.designs.encode import BasicDesign, Design, MissingLayerError, InvalidLayerNameError
 
 app = Flask(__name__)
 utils.init_app(app)
@@ -91,17 +91,24 @@ def maybe_scale(image):
 @limiter.limit('2 per 10 seconds')
 def design_archive(design_code):
 	InvalidDesignCodeError.validate(design_code)
+	render_internal = 'internal_layers' in request.args
 	get_scale_factor()  # do the validation now since apparently it doesn't work in the generator
 	data = designs_api.download_design(designs_api.design_id(design_code))
 	meta, body = data['mMeta'], data['mData']
+	type_code = meta['mMtUse']
 	design_name = meta['mMtDNm']  # hungarian notation + camel case + abbreviations DO NOT mix well
 
 	def gen():
 		tar = tarfile_stream.open(mode='w|')
 		yield from tar.header()
 
-		for i, image in designs_render.render_layers(body):
-			tarinfo = tarfile_stream.TarInfo(f'{design_name}/{i}.png')
+		if type_code == BasicDesign.type_code or render_internal:
+			layers = designs_render.render_layers(body)
+		else:
+			layers = designs_render.render_external_layers(body, type_code)
+
+		for name, image in designs_render.render_layers(body):
+			tarinfo = tarfile_stream.TarInfo(f'{design_name}/{name}.png')
 			tarinfo.mtime = data['updated_at']
 
 			image = maybe_scale(image)
@@ -122,15 +129,21 @@ def design_archive(design_code):
 		headers={'Content-Disposition': f"attachment; filename*=utf-8''{encoded_filename}"},
 	)
 
-@app.route('/design/<design_code>/<int:layer>.png')
+@app.route('/design/<design_code>/<layer>.png')
 @limiter.limit('12 per 10 seconds')
 def design_layer(design_code, layer):
 	InvalidDesignCodeError.validate(design_code)
 	data = designs_api.download_design(designs_api.design_id(design_code))
 	meta, body = data['mMeta'], data['mData']
+	type_code = meta['mMtUse']
 	design_name = meta['mMtDNm']
+	try:
+		layer_i = int(layer)
+	except ValueError:
+		rendered = designs_render.render_layer_name(body, layer, type_code)
+	else:
+		rendered = designs_render.render_layer(body, layer_i)
 
-	rendered = designs_render.render_layer(body, layer)
 	rendered = maybe_scale(rendered)
 	out = io.BytesIO()
 	with rendered.convert('png') as c:

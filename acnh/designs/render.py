@@ -5,6 +5,7 @@ import io
 import wand.image
 
 from ..common import ACNHError
+from .encode import Design, InvalidLayerNameError
 from .format import WIDTH, HEIGHT
 
 class InvalidLayerIndexError(ACNHError):
@@ -52,9 +53,21 @@ def render_layer(raw_image, layer_i: int) -> wand.image.Image:
 
 	return _render_layer(raw_image, gen_palette(raw_image), layer)
 
+def render_layer_name(raw_image, layer_name, type_code) -> wand.image.Image:
+	external_layers = render_external_layers(raw_image, type_code)
+	try:
+		return external_layers[layer_name]
+	except KeyError:
+		raise InvalidLayerNameError(Design(type_code))
+
 def render_layers(raw_image):
 	palette = gen_palette(raw_image)
 	# idk there's probably some python nerd `map` thing you can do here I'm a
 	# C programmer so I like the word `for` more than that functional nonsense
 	for layer_i, layer in raw_image['mData'].items():
 		yield int(layer_i), _render_layer(raw_image, palette, layer)
+
+def render_external_layers(raw_image, type_code):
+	layer_images = [layer for i, layer in render_layers(raw_image)]
+	cls = Design(type_code)
+	return cls.externalize(internal_layers=layer_images).layer_images
