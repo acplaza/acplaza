@@ -148,12 +148,3 @@ commit.
   and copyright ownership has been transferred to me, io mintz.
 - tarfile_stream.py is based on the Python standard library tarfile.py and used under the MIT License.
   See that file for details.
-- xbrz/ is based on code provided by Zenju under the GPLv3 license. See xbrz/License.txt for details.
-  Some changes were made:
-  - Added some `extern "C"` declarations to the functions I intended to call from python.
-  - Removed some namespace use to avoid being mangled.
-  - Replaced a template that was fucking braindead even for a C++ developer with a simple function that takes two arguments.
-    Was that so hard?
-  - Converted the library to use RGBA instead of ARGB.
-- xbrz.py is based on xbrz/ and is released under the AGPLv3 license, see LICENSE-AGPLv3.md for details.
-  As xbrz.py is not directly imported by any other code, the rest of the code is not affected by this license.
