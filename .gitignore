@@ -1,6 +1,7 @@
 /config.toml
 __pycache__/
 *.bmp
+*.jpg
 *.png
 *.tar
 *.so
