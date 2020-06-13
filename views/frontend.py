@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+from http import HTTPStatus
+
 from flask import Blueprint, render_template, session, request
 
 import utils
@@ -24,7 +26,8 @@ def login():
 		# with the form
 		abort(HTTPStatus.UNAUTHORIZED)
 
-	if utils.validate_token(token):
-		session['authed'] = 1
+	if not utils.validate_token(token):
+		return 'auth failed', HTTPStatus.UNAUTHORIZED
 
+	session['authed'] = 1
 	return 'OK'
