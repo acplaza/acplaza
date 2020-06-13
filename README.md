@@ -11,6 +11,8 @@ in all requests.
 
 ## Endpoints
 
+The prefix for all endpoints is `/api/v0`. This means the full path for /design/1 is `/api/v0/design/1`.
+
 ### Dodo Codes
 
 - /host-session/:dodo-code

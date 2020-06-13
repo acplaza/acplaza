@@ -1,0 +1,14 @@
+{% with messages = get_flashed_messages(with_categories=true) %}
+	{% if messages %}
+		{% for category, message in messages %}
+			{# todo add coloring classes #}
+			{% if category == 'message' %}
+				<p>{{ message }}</p>
+			{% elif category == 'success' %}
+				<p>{{ message }}</p>
+			{% elif category == 'error' %}
+				<p>{{ message }}</p>
+			{% endif %}
+		{% endfor %}
+	{% endif %}
+{% endwith %}

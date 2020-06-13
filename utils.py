@@ -21,6 +21,7 @@ import asyncpg
 import syncpg
 from flask import current_app, g, request, session
 from flask_limiter.util import get_ipaddr
+from flask_wtf.csrf import CSRFProtect
 from werkzeug.exceptions import HTTPException
 
 # config comes first to resolve circular imports
@@ -34,11 +35,11 @@ if os.name != 'nt':
 from acnh.common import ACNHError
 
 def init_app(app):
+	CSRFProtect(app)
 	app.secret_key = config['flask-secret-key']
 	app.config['JSON_SORT_KEYS'] = False
 	app.config['SESSION_COOKIE_SAMESITE'] = 'Strict'
 	app.json_encoder = CustomJSONEncoder
-	app.errorhandler(ACNHError)(handle_acnh_exception)
 	app.errorhandler(HTTPException)(handle_exception)
 	app.teardown_appcontext(close_pgconn)
 	app.before_request(process_authorization)
@@ -146,15 +147,6 @@ class CustomJSONEncoder(flask.json.JSONEncoder):
 		if isinstance(x, asyncpg.Record):
 			return dict(x)
 		return super().default(x)
-
-def handle_acnh_exception(ex):
-	"""Return JSON instead of HTML for ACNH errors"""
-	d = ex.to_dict()
-	response = current_app.response_class()
-	response.status_code = d['http_status']
-	response.data = json.dumps(d)
-	response.content_type = 'application/json'
-	return response
 
 def handle_exception(ex):
 	"""Return JSON instead of HTML for HTTP errors."""

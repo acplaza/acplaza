@@ -48,6 +48,10 @@ from nintendo.settings import Settings
 
 from .utils import load_cached
 
+def init_app(app):
+	app.teardown_appcontext(close_clients)
+	app.after_request(close_backend)
+
 class ACNHError(Exception):
 	code: ClassVar[int]
 	message: ClassVar[str]
@@ -125,10 +129,6 @@ class ACNHClient:
 
 	def close(self):
 		self.session.close()
-
-def init_app(app):
-	app.teardown_appcontext(close_clients)
-	app.after_request(close_backend)
 
 gfuncs = []
 
