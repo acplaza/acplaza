@@ -22,12 +22,15 @@ The /design endpoints take an optional `scale` query parameter, an integer 1–6
 using what is believed to be the same algorithm that the game uses.
 
 - /design/:custom-design-code
-Returns the unprocessed response from Nintendo's servers. Contains the raw data for the image along with its palette
-and creator information. Binary data (`resp.mData.mData`) is base64 encoded.
+  Returns the unprocessed response from Nintendo's servers. Contains the raw data for the image along with its palette
+  and creator information. Binary data (`resp.mData.mData`) is base64 encoded.
 - /design/:custom-design-code.tar
-Returns a tar archive containing a PNG render of each layer of the given custom design code.
+  Returns a tar archive containing a PNG render of each layer of the given custom design code.
+  Query parameters:
+  - `?internal`: returns the internal layers (0, 1, 2, or 3) instead of the human-friendly ones
+    (e.g. 'front', 'back', 'brim').
 - /design/:custom-design-code/:layer.png
-Returns a PNG render of the specified layer.
+  Returns a PNG render of the specified layer.
 - /designs/:creator-id Lists the designs posted by the given creator ID. Query parameters:
   - pro: true/false. whether to list the creator's Pro designs only. If false only normal designs will be listed.
 
