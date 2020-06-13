@@ -41,8 +41,12 @@ class LayerCorrespondence:
 	external_pos: XY
 	dimensions: XY
 
+class LayerMeta(type):
+	def __mul__(cls, x):
+		return [cls(str(i), STANDARD) for i in range(x)]
+
 @dataclass
-class Layer:
+class Layer(metaclass=LayerMeta):
 	name: str
 	size: Tuple[int, int]
 
@@ -172,7 +176,60 @@ class Design:
 # layer sizes
 SHORT_SLEEVE = (22, 13)
 LONG_SLEEVE = (22, 22)
-LONG_BODY = (32, 40)
+WIDE_SLEEVE = (30, 22)
+LONG_BODY = (32, 41)
+
+STANDARD_BODY_LAYERS = [
+	Layer('back', STANDARD),
+	Layer('front', STANDARD),
+]
+
+LONG_BODY_LAYERS = [
+	Layer('back', LONG_BODY),
+	Layer('front', LONG_BODY),
+]
+
+SHORT_SLEEVE_LAYERS = [
+	Layer('right-sleeve', SHORT_SLEEVE),
+	Layer('left-sleeve', SHORT_SLEEVE),
+]
+
+LONG_SLEEVE_LAYERS = [
+	Layer('right-sleeve', LONG_SLEEVE),
+	Layer('left-sleeve', LONG_SLEEVE),
+]
+
+WIDE_SLEEVE_LAYERS = [
+	Layer('right-sleeve', WIDE_SLEEVE),
+	Layer('left-sleeve', WIDE_SLEEVE),
+]
+
+SHORT_SLEEVE_CORRESPONDENCE = [
+	LayerCorrespondence(2, 'right-sleeve', (5, 10), (0, 0), SHORT_SLEEVE),
+	LayerCorrespondence(3, 'left-sleeve', (5, 10), (0, 0), SHORT_SLEEVE),
+]
+
+LONG_SLEEVE_CORRESPONDENCE = [
+	LayerCorrespondence(2, 'right-sleeve', (1, 10), (0, 0), LONG_SLEEVE),
+	LayerCorrespondence(3, 'left-sleeve', (1, 10), (0, 0), LONG_SLEEVE),
+]
+
+WIDE_SLEEVE_CORRESPONDENCE = [
+	LayerCorrespondence(2, 'right-sleeve', (1, 10), (0, 0), WIDE_SLEEVE),
+	LayerCorrespondence(3, 'left-sleeve', (1, 10), (0, 0), WIDE_SLEEVE),
+]
+
+STANDARD_BODY_CORRESPONDENCE = [
+	LayerCorrespondence(0, 'back', (0, 0), (0, 0), STANDARD),
+	LayerCorrespondence(1, 'front', (0, 0), (0, 0), STANDARD),
+]
+
+LONG_BODY_CORRESPONDENCE = [
+	LayerCorrespondence(0, 'front', (0, 0), (0, 0), STANDARD),
+	LayerCorrespondence(2, 'front', (0, 0), (0, 32), (32, 9)),
+	LayerCorrespondence(1, 'back', (0, 0), (0, 0), STANDARD),
+	LayerCorrespondence(3, 'back', (0, 0), (0, 32), (32, 9)),
+]
 
 class BasicDesign(Design):
 	type_code = 99
@@ -180,70 +237,58 @@ class BasicDesign(Design):
 
 class TankTop(Design):
 	type_code = 102
-	external_layers = [
-		Layer('back', STANDARD),
-		Layer('front', STANDARD),
-	]
+	external_layers = STANDARD_BODY_LAYERS
 
 class ShortSleeveTee(Design):
 	type_code = 101
-	external_layers = TankTop.external_layers + [
-		Layer('right-sleeve', SHORT_SLEEVE),
-		Layer('left-sleeve', SHORT_SLEEVE),
-	]
+	external_layers = STANDARD_BODY_LAYERS + SHORT_SLEEVE_LAYERS
+	internal_layers = Layer * 4
+	correspondence = STANDARD_BODY_CORRESPONDENCE + SHORT_SLEEVE_CORRESPONDENCE
 
 class LongSleeveDressShirt(Design):
 	type_code = 100
-	external_layers = TankTop.external_layers + [
-		Layer('right-sleeve', LONG_SLEEVE),
-		Layer('left-sleeve', LONG_SLEEVE),
-	]
+	external_layers = STANDARD_BODY_LAYERS + LONG_SLEEVE_LAYERS
+	internal_layers = Layer * 4
+	correspondence = STANDARD_BODY_CORRESPONDENCE + LONG_SLEEVE_CORRESPONDENCE
 
-class Sweater(Design):
+class Sweater(LongSleeveDressShirt):
 	type_code = 103
-	external_layers = LongSleeveDressShirt.external_layers
 
-class Hoodie(Design):
+# wait where's the hood? lol
+class Hoodie(LongSleeveDressShirt):
 	type_code = 104
-	# wait where's the hood? lol
-	external_layers = Sweater.external_layers
 
 class SleevelessDress(Design):
 	type_code = 107
-	external_layers = [
-		Layer('back', LONG_BODY),
-		Layer('front', LONG_BODY),
-	]
+	external_layers = LONG_BODY_LAYERS
+	internal_layers = Layer * 4
+	correspondence = LONG_BODY_CORRESPONDENCE
 
 class Coat(Design):
 	type_code = 105
-	external_layers = SleevelessDress.external_layers + [
-		Layer('right-sleeve', LONG_SLEEVE),
-		Layer('left-sleeve', LONG_SLEEVE),
-	]
+	external_layers = LONG_BODY_LAYERS + LONG_SLEEVE_LAYERS
+	correspondence = LONG_BODY_CORRESPONDENCE + LONG_SLEEVE_CORRESPONDENCE
 
 class ShortSleeveDress(Design):
 	type_code = 106
-	external_layers = SleevelessDress.external_layers + [
-		Layer('right-sleeve', SHORT_SLEEVE),
-		Layer('left-sleeve', SHORT_SLEEVE),
-	]
+	external_layers = LONG_BODY_LAYERS + SHORT_SLEEVE_LAYERS
+	internal_layers = Layer * 4
+	correspondence = LONG_BODY_CORRESPONDENCE + SHORT_SLEEVE_CORRESPONDENCE
 
-class LongSleeveDress(Design):
+class LongSleeveDress(Coat):
 	type_code = 108
-	external_layers = Coat.external_layers
 
-class RoundDress(Design):
+class RoundDress(ShortSleeveDress):
 	type_code = 110
-	external_layers = SleevelessDress.external_layers
 
-class BalloonHemDress(Design):
+class BalloonHemDress(ShortSleeveDress):
 	type_code = 109
-	external_layers = ShortSleeveDress.external_layers
 
 class Robe(Design):
 	type_code = 111
-	external_layers = LongSleeveDress.external_layers
+	external_layers = LONG_BODY_LAYERS + WIDE_SLEEVE_LAYERS
+	internal_layers = Layer * 4
+	correspondence = LONG_BODY_CORRESPONDENCE + WIDE_SLEEVE_CORRESPONDENCE
 
 class BrimmedCap(Design):
 	type_code = 112
@@ -252,7 +297,7 @@ class BrimmedCap(Design):
 		Layer('back', (20, 44)),
 		Layer('brim', (44, 21)),
 	]
-	internal_layers = [Layer(str(i), STANDARD) for i in range(4)]
+	internal_layers = Layer * 4
 	correspondence = [
 		LayerCorrespondence(0, 'front', (0, 0), (0, 0), STANDARD),
 		LayerCorrespondence(1, 'front', (0, 0), (32, 0), (12, 32)),
@@ -288,7 +333,7 @@ class BrimmedHat(Design):
 		Layer('middle', (64, 19)),
 		Layer('bottom', (64, 9)),
 	]
-	internal_layers = [Layer(str(i), STANDARD) for i in range(4)]
+	internal_layers = Layer * 4
 	correspondence = [
 		LayerCorrespondence(0, 'top', (14, 0), (0, 0), (18, 32)),
 		LayerCorrespondence(1, 'top', (0, 0), (18, 0), (18, 32)),
