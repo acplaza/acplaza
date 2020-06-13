@@ -120,15 +120,11 @@ def design_layer(design_code, layer):
 		rendered = designs_render.render_layer(body, layer_i)
 
 	rendered = maybe_scale(rendered)
-	out = io.BytesIO()
-	with rendered.convert('png') as c:
-		c.save(out)
-	length = out.tell()
-	out.seek(0)
+	out = rendered.make_blob('png')
 
 	encoded_filename = urllib.parse.quote(f'{design_name}-{layer}.png')
 	return current_app.response_class(out, mimetype='image/png', headers={
-		'Content-Length': length,
+		'Content-Length': len(out),
 		'Content-Disposition': f"inline; filename*=utf-8''{encoded_filename}"
 	})
 
