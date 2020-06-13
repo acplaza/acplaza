@@ -80,9 +80,9 @@ def design_archive(design_code):
 		if type_code == BasicDesign.type_code or render_internal:
 			layers = designs_render.render_layers(body)
 		else:
-			layers = designs_render.render_external_layers(body, type_code)
+			layers = designs_render.render_external_layers(body, type_code).items()
 
-		for name, image in designs_render.render_layers(body):
+		for name, image in layers:
 			tarinfo = tarfile_stream.TarInfo(f'{design_name}/{name}.png')
 			tarinfo.mtime = data['updated_at']
 
