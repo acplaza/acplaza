@@ -105,7 +105,7 @@ def design_archive(design_code):
 	)
 
 @bp.route('/design/<design_code>/<layer>.png')
-@limiter.limit('12 per 10 seconds')
+@limiter.limit('6 per 5 seconds')
 def design_layer(design_code, layer):
 	InvalidDesignCodeError.validate(design_code)
 	data = designs_api.download_design(designs_api.design_id(design_code))
