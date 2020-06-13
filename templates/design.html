@@ -1,0 +1,11 @@
+{% extends 'base.html' %}
+{% block title %}{{ design_name }} by {{ author_name }} from {{ island_name }}{% endblock %}
+{% block content %}
+	{# TODO add created_at in user's time zone #}
+	{% for name, url in layers %}
+		<figure>
+			<img src="{{ url }}">
+			<figcaption>{{ name }}</figcaption>
+		</figure>
+	{% endfor %}
+{% endblock %}

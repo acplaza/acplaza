@@ -177,3 +177,6 @@ def xbrz_scale_wand_in_subprocess(img: wand.image.Image, factor):
 	scaled = wand.image.Image(width=img.width * factor, height=img.height * factor)
 	scaled.import_pixels(channel_map='RGBA', storage='char', data=stdout)
 	return scaled
+
+def image_to_base64_url(img: wand.image.Image):
+	return (b'data:image/png;base64,' + base64.b64encode(img.make_blob('png'))).decode()

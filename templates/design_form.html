@@ -1,0 +1,8 @@
+{% extends 'base.html' %}
+{% block title %}Enter a design code{% endblock %}
+{% block content %}
+	<form>
+		<input name=design_code type=text placeholder="5RJJ-TXK3-JWXV" pattern="{{ design_code_regex }}">
+		<input type=submit>
+	</form>
+{% endblock %}
