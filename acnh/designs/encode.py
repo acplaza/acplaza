@@ -314,6 +314,7 @@ class ShortSleeveMixin:
 		left_sleeve = self.layer_images['left-sleeve'].clone()
 		left_sleeve.scale(72, 44)
 		net_img.composite(left_sleeve, 141, 157)
+		return net_img
 
 class ShortSleeveTee(ShortSleeveMixin, StandardBodyMixin, Design):
 	type_code = 101
@@ -336,6 +337,7 @@ class LongSleeveMixin:
 		left_sleeve = self.layer_images['left-sleeve'].clone()
 		left_sleeve.scale(72, 77)
 		net_img.composite(left_sleeve, 141, 157)
+		return net_img
 
 # bruh we composing functions via multiple inheritance
 # feels good
@@ -347,7 +349,7 @@ class LongSleeveDressShirt(LongSleeveMixin, StandardBodyMixin, Design):
 	correspondence = STANDARD_BODY_CORRESPONDENCE + LONG_SLEEVE_CORRESPONDENCE
 
 	def net_image(self):
-		net_image = super().net_image()
+		net_img = super().net_image()
 		net_img.composite(self.net_image_mask, 0, 0)
 		return net_img
 
