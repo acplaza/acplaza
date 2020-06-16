@@ -65,7 +65,13 @@ def design_code(design_id):
 	return add_hyphens(''.join(reversed(digits)).zfill(4 * 3))
 
 def add_hyphens(author_id: str):
-	return '-'.join(utils.chunked(author_id, 4))
+	return '-'.join(utils.chunked(author_id.zfill(4 * 3), 4))
+
+def merge_headers(data, headers):
+	data['author_name'] = headers['design_player_name']
+	data['author_id'] = headers['design_player_id']
+	data['created_at'] = headers['created_at']
+	data['updated_at'] = headers['updated_at']
 
 def download_design(design_id_or_code: DesignId, partial=False):
 	if isinstance(design_id_or_code, str):
@@ -92,19 +98,16 @@ def download_design(design_id_or_code: DesignId, partial=False):
 	url = urllib.parse.urlparse(headers['body'])
 	resp = acnh().request('GET', url.path + '?' + url.query)
 	data = msgpack.loads(resp.content)
-	data['author_name'] = headers['design_player_name']
-	data['author_id'] = headers['design_player_id']
-	data['created_at'] = headers['created_at']
-	data['updated_at'] = headers['updated_at']
+	merge_headers(data, headers)
 	return data
 
-def list_designs(author_id: int, *, pro: bool):
+def list_designs(author_id: int, *, pro: bool, with_binaries: bool = False):
 	resp = acnh().request('GET', '/api/v2/designs', params={
 		'offset': 0,
 		'limit': 120,
 		'q[player_id]': author_id,
 		'q[pro]': 'true' if pro else 'false',
-		'with_binaries': 'true',
+		'with_binaries': 'true' if with_binaries else 'false',
 	})
 	resp.raise_for_status()
 	resp = msgpack.loads(resp.content)

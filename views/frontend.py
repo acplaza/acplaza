@@ -3,6 +3,7 @@
 import datetime as dt
 from http import HTTPStatus
 
+import msgpack
 from flask import Blueprint, render_template, session, request, redirect, url_for
 
 import utils
@@ -92,7 +93,7 @@ def pro_designs(author_id):
 def designs(author_id, *, pro):
 	author_id = int(designs_api.InvalidAuthorIdError.validate(author_id).replace('-', ''))
 	pretty_author_id = designs_api.add_hyphens(str(author_id))
-	data = designs_api.list_designs(author_id, pro=pro)
+	data = designs_api.list_designs(author_id, pro=pro, with_binaries=True)
 	if not data['total']:
 		return render_template(
 			'no_designs.html',
@@ -103,12 +104,17 @@ def designs(author_id, *, pro):
 
 	designs = []
 	for header in data['headers']:
-		data = designs_api.download_design(header['id'])
-		layer_0 = designs_render.render_layer(data['mData'], 0)
+		# XXX unfortunately this page is made a lot slower due to requesting each design just for its
+		# design name. Our options aren't great though. We can either fetch each design on the client side,
+		# or we can omit the design name entirely.
+		data = msgpack.loads(acnh().request('GET', header['body']).content)
+		designs_api.merge_headers(data, header)
+		design_code = designs_api.design_code(header['id'])
+		net_image = designs_encode.Design.from_data(data).net_image()
 		designs.append((
 			data['mMeta']['mMtDNm'],
-			designs_api.design_code(header['id']),
-			url_for('.design_layer', design_code=designs_api.design_code(header['id']), layer='thumbnail'),
+			design_code,
+			utils.image_to_base64_url(net_image),
 		))
 
 	return render_template(
