@@ -193,7 +193,7 @@ class InvalidImageIdError(ImageError, InvalidFormatError):
 ISLAND_NAMES = [
 	'The Cloud',
 	'Black Lives Matter',
-	'TRAHR',
+	'Trans Rights!',
 	'ACAB',
 ]
 
