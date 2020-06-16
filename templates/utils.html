@@ -1,0 +1,12 @@
+{% macro other_designs_link(author_id, pro) %}
+	{% if pro %}
+		<a href="/designs/{{ author_id }}">View their basic designs</a>
+	{% else %}
+		<a href="/pro-designs/{{ author_id }}">View their Pro designs</a>
+	{% endif %}
+{% endmacro %}
+
+{# https://technology.blog.gov.uk/2020/02/24/why-the-gov-uk-design-system-team-changed-the-input-type-for-numbers/ #}
+{% set numeric_input_attrs %}
+type=text inputmode=numeric pattern="[0-9]*"
+{% endset %}
