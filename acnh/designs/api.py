@@ -127,5 +127,4 @@ def create_design(design_data) -> int:
 		raise InvalidDesignError
 	resp.raise_for_status()
 	data = msgpack.loads(resp.content)
-	print(data)
 	return data['id']
