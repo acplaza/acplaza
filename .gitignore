@@ -5,3 +5,5 @@ __pycache__/
 *.png
 *.tar
 *.so
+!/data/preview image.jpg
+!/data/net image masks/*.png

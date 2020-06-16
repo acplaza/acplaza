@@ -1,5 +1,7 @@
 # © 2020 io mintz <io@mintz.cc>
 
+import contextlib
+import datetime as dt
 import io
 import itertools
 import re
@@ -59,10 +61,16 @@ class Layer(metaclass=LayerMeta):
 		if image.size != self.size:
 			raise InvalidLayerSizeError(self.name)
 
+NET_IMAGE_BASE = Layer('', (240, 240)).as_wand()
+
 class Design:
+	# shared static vars
 	design_types: ClassVar[Dict[str, Type['Design']]] = {}
 	design_type_codes: ClassVar[Dict[int, Type['Design']]] = {}
+
+	# per-class static vars
 	type_code: ClassVar[int]
+	display_name: str
 	# the layers that are presented to the user
 	external_layers: ClassVar[List[Layer]]
 	external_layer_names: ClassVar[Dict[str, Layer]]
@@ -70,13 +78,24 @@ class Design:
 	internal_layers: ClassVar[List[Optional[Layer]]]
 	correspondence: ClassVar[Optional[List[LayerCorrespondence]]]
 
-	island_name: str
-	design_name: str
+	# instance vars
+	author_id: Optional[int]
+	author_name: Optional[str]
+	island_name: Optional[str]
+	design_name: Optional[str]
+	created_at: Optional[dt.datetime]
 	layer_images: Dict[str, wand.image.Image]
 
 	def __init_subclass__(cls):
-		# CamelCase to kebab-case for the API
-		cls.name = re.sub('([a-z0-9])([A-Z])', r'\1-\2', cls.__name__).lower()
+		if (
+			# if this class doesn't define it
+			not hasattr(cls, 'display_name')
+			# or it's inherited (XXX this is really gay)
+			or any(cls.display_name is getattr(supercls, 'display_name', None) for supercls in cls.__bases__)
+		):
+			cls.display_name = cls.__name__
+		# make it kebab-case for the API
+		cls.name = cls.display_name.lower().replace(' ', '-')
 		cls.design_types[cls.name] = cls
 		cls.design_type_codes[cls.type_code] = cls
 
@@ -89,6 +108,10 @@ class Design:
 		cls.external_layer_names = {layer.name: layer for layer in cls.external_layers}
 
 		cls.one_to_one = cls.correspondence is None
+		cls.pro = len(cls.internal_layers) > 1
+
+		if cls.pro:
+			cls.net_image_mask = wand.image.Image(filename=f'data/net image masks/{cls.name}.png')
 
 	def __new__(cls, type=None, **kwargs):
 		# this is really two constructors:
@@ -108,16 +131,36 @@ class Design:
 
 		# constructor #2: instance variables
 		self = object.__new__(cls)
-		author_name, island_name, design_name, layers = cls._parse_subclass_init_kwargs(**kwargs)
+		author_id, author_name, island_name, design_name, created_at, layers = cls._parse_subclass_init_kwargs(**kwargs)
+		self.author_id = author_id
 		self.author_name = author_name
 		self.island_name = island_name
 		self.design_name = design_name
+		self.created_at = created_at
 		self.layer_images = layers
 		return self
 
 	@classmethod
-	def _parse_subclass_init_kwargs(cls, *, author_name=None, island_name=None, design_name=None, layers):
-		return author_name, island_name, design_name, layers
+	def _parse_subclass_init_kwargs(
+		cls, *, author_id=None, author_name=None, island_name=None, design_name=None, created_at=None, layers
+	):
+		return author_id, author_name, island_name, design_name, created_at, layers
+
+	@classmethod
+	def from_data(cls, data: dict):
+		from .render import render_layers  # resolve circular import
+
+		internal_layers = [layer for i, layer in render_layers(data['mData'])]
+		type_code = data['mMeta']['mMtUse']
+		subcls = cls(type_code)
+		return subcls.externalize(
+			internal_layers,
+			author_id=data['author_id'],
+			author_name=data['author_name'],
+			island_name=data['mMeta']['mMtVNm'],
+			design_name=data['mMeta']['mMtDNm'],
+			created_at=dt.datetime.fromtimestamp(data['created_at'], dt.timezone.utc),
+		)
 
 	def internalize(self) -> List[wand.image.Image]:
 		if self.one_to_one:
@@ -159,6 +202,9 @@ class Design:
 		y_slice = slice(y, y + height)
 		dst.composite(src[x_slice, y_slice], *dst_position)
 
+	def net_image(self) -> wand.image.Image:
+		...
+
 	def validate(self):
 		for layer_name, layer in self.external_layer_names.items():
 			try:
@@ -168,10 +214,6 @@ class Design:
 
 		if len(self.layer_images) > len(self.external_layers):
 			raise InvalidLayerNameError(self)
-
-	@property
-	def pro(self):
-		return len(self.internal_layers) > 1
 
 # layer sizes
 SHORT_SLEEVE = (22, 13)
@@ -233,23 +275,81 @@ LONG_BODY_CORRESPONDENCE = [
 
 class BasicDesign(Design):
 	type_code = 99
-	external_layers = [Layer('0', STANDARD)]
+	display_name = 'Basic design'
+	external_layers = Layer * 1
 
-class TankTop(Design):
+	def net_image(self):
+		net_img = self.layer_images['0'].clone()
+		net_img.scale(230, 230)
+		net_img.border(wand.color.Color('#f3f5e7'), 5, 5)
+		return net_img
+
+class StandardBodyMixin:
+	def net_image(self):
+		net_img = NET_IMAGE_BASE.clone()
+		back = self.layer_images['back'].clone()
+		back.scale(112, 113)
+		net_img.composite(back, 6, 6)
+		front = self.layer_images['front'].clone()
+		front.scale(113, 113)
+		net_img.composite(front, 121, 6)
+		return net_img
+
+class TankTop(StandardBodyMixin, Design):
 	type_code = 102
+	display_name = 'Tank top'
 	external_layers = STANDARD_BODY_LAYERS
 
-class ShortSleeveTee(Design):
+	def net_image(self):
+		net_img = super().net_image()
+		net_img.composite(self.net_image_mask, 0, 0)
+		return net_img
+
+class ShortSleeveMixin:
+	def net_image(self):
+		net_img = super().net_image()
+		right_sleeve = self.layer_images['right-sleeve'].clone()
+		right_sleeve.scale(72, 44)
+		net_img.composite(right_sleeve, 26, 157)
+		left_sleeve = self.layer_images['left-sleeve'].clone()
+		left_sleeve.scale(72, 44)
+		net_img.composite(left_sleeve, 141, 157)
+
+class ShortSleeveTee(ShortSleeveMixin, StandardBodyMixin, Design):
 	type_code = 101
+	display_name = 'Short-sleeve tee'
 	external_layers = STANDARD_BODY_LAYERS + SHORT_SLEEVE_LAYERS
 	internal_layers = Layer * 4
 	correspondence = STANDARD_BODY_CORRESPONDENCE + SHORT_SLEEVE_CORRESPONDENCE
 
-class LongSleeveDressShirt(Design):
+	def net_image(self):
+		net_img = super().net_image()
+		net_img.composite(self.net_image_mask, 0, 0)
+		return net_img
+
+class LongSleeveMixin:
+	def net_image(self):
+		net_img = super().net_image()
+		right_sleeve = self.layer_images['right-sleeve'].clone()
+		right_sleeve.scale(72, 77)
+		net_img.composite(right_sleeve, 26, 157)
+		left_sleeve = self.layer_images['left-sleeve'].clone()
+		left_sleeve.scale(72, 77)
+		net_img.composite(left_sleeve, 141, 157)
+
+# bruh we composing functions via multiple inheritance
+# feels good
+class LongSleeveDressShirt(LongSleeveMixin, StandardBodyMixin, Design):
 	type_code = 100
+	display_name = 'Long-sleeve dress shirt'
 	external_layers = STANDARD_BODY_LAYERS + LONG_SLEEVE_LAYERS
 	internal_layers = Layer * 4
 	correspondence = STANDARD_BODY_CORRESPONDENCE + LONG_SLEEVE_CORRESPONDENCE
+
+	def net_image(self):
+		net_image = super().net_image()
+		net_img.composite(self.net_image_mask, 0, 0)
+		return net_img
 
 class Sweater(LongSleeveDressShirt):
 	type_code = 103
@@ -258,40 +358,78 @@ class Sweater(LongSleeveDressShirt):
 class Hoodie(LongSleeveDressShirt):
 	type_code = 104
 
-class SleevelessDress(Design):
+class LongBodyMixin:
+	def net_image(self):
+		net_img = NET_IMAGE_BASE.clone()
+		back = self.layer_images['back'].clone()
+		back.scale(112, 145)
+		net_img.composite(back, 6, 6)
+		front = self.layer_images['front'].clone()
+		front.scale(113, 145)
+		net_img.composite(front, 121, 6)
+		return net_img
+
+class SleevelessDress(LongBodyMixin, Design):
 	type_code = 107
+	display_name = 'Sleeveless dress'
 	external_layers = LONG_BODY_LAYERS
 	internal_layers = Layer * 4
 	correspondence = LONG_BODY_CORRESPONDENCE
 
-class Coat(Design):
+	def net_image(self):
+		net_img = super().net_image()
+		net_img.composite(self.net_image_mask, 0, 0)
+		return net_img
+
+class Coat(LongSleeveMixin, LongBodyMixin, Design):
 	type_code = 105
 	external_layers = LONG_BODY_LAYERS + LONG_SLEEVE_LAYERS
 	correspondence = LONG_BODY_CORRESPONDENCE + LONG_SLEEVE_CORRESPONDENCE
 
-class ShortSleeveDress(Design):
+	def net_image(self):
+		net_img = super().net_image()
+		net_img.composite(self.net_image_mask, 0, 0)
+		return net_img
+
+class ShortSleeveDress(ShortSleeveMixin, LongBodyMixin, Design):
 	type_code = 106
+	display_name = 'Short-sleeve dress'
 	external_layers = LONG_BODY_LAYERS + SHORT_SLEEVE_LAYERS
 	internal_layers = Layer * 4
 	correspondence = LONG_BODY_CORRESPONDENCE + SHORT_SLEEVE_CORRESPONDENCE
 
 class LongSleeveDress(Coat):
 	type_code = 108
+	display_name = 'Long-sleeve dress'
 
 class RoundDress(ShortSleeveDress):
 	type_code = 110
+	display_name = 'Round dress'
 
 class BalloonHemDress(ShortSleeveDress):
 	type_code = 109
+	display_name = 'Balloon-hem dress'
 
-class Robe(Design):
+class Robe(LongBodyMixin, Design):
 	type_code = 111
 	external_layers = LONG_BODY_LAYERS + WIDE_SLEEVE_LAYERS
 	internal_layers = Layer * 4
 	correspondence = LONG_BODY_CORRESPONDENCE + WIDE_SLEEVE_CORRESPONDENCE
 
+	def net_image(self):
+		net_img = super().net_image()
+		right_sleeve = self.layer_images['right-sleeve'].clone()
+		right_sleeve.scale(105, 77)
+		net_img.composite(right_sleeve, 10, 157)
+		left_sleeve = self.layer_images['left-sleeve'].clone()
+		left_sleeve.scale(105, 77)
+		net_img.composite(left_sleeve, 125, 157)
+		net_img.composite(self.net_image_mask, 0, 0)
+		return net_img
+
 class BrimmedCap(Design):
 	type_code = 112
+	display_name = 'Brimmed cap'
 	external_layers = [
 		Layer('front', (44, 41)),
 		Layer('back', (20, 44)),
@@ -309,8 +447,23 @@ class BrimmedCap(Design):
 		LayerCorrespondence(3, 'brim', (0, 11), (32, 0), (12, 21)),
 	]
 
+	def net_image(self) -> wand.image.Image:
+		net_img = NET_IMAGE_BASE.clone()
+		front = self.layer_images['front'].clone()
+		front.scale(151, 146)
+		net_img.composite(front, 8, 4)
+		brim = self.layer_images['brim'].clone()
+		brim.scale(150, 69)
+		net_img.composite(brim, 9, 163)
+		back = self.layer_images['back'].clone()
+		back.scale(66, 147)
+		net_img.composite(back, 166, 13)
+		net_img.composite(self.net_image_mask, 0, 0)
+		return net_img
+
 class KnitCap(Design):
 	type_code = 113
+	display_name = 'Knit cap'
 	external_layers = [Layer('cap', (64, 53))]
 	internal_layers = [
 		Layer('0', STANDARD),
@@ -326,8 +479,17 @@ class KnitCap(Design):
 		LayerCorrespondence(0, 'cap', (0, 0), (32, 32), STANDARD),
 	]
 
+	def net_image(self):
+		net_img = NET_IMAGE_BASE.clone()
+		cap = self.layer_images['cap'].clone()
+		cap.scale(228, 182)
+		net_img.composite(cap, 6, 10)
+		net_img.composite(self.net_image_mask, 0, 0)
+		return net_img
+
 class BrimmedHat(Design):
 	type_code = 114
+	display_name = 'Brimmed hat'
 	external_layers = [
 		Layer('top', (36, 36)),
 		Layer('middle', (64, 19)),
@@ -344,6 +506,20 @@ class BrimmedHat(Design):
 		LayerCorrespondence(2, 'bottom', (0, 23), (0, 0), (32, 9)),
 		LayerCorrespondence(3, 'bottom', (0, 23), (32, 0), (32, 9)),
 	]
+
+	def net_image(self) -> wand.image.Image:
+		net_img = NET_IMAGE_BASE.clone()
+		top = self.layer_images['top'].clone()
+		top.scale(121, 121)
+		net_img.composite(top, 59, 9)
+		middle = self.layer_images['middle'].clone()
+		middle.scale(228, 62)
+		net_img.composite(middle, 6, 138)
+		bottom = self.layer_images['bottom'].clone()
+		bottom.scale(228, 26)
+		net_img.composite(bottom, 6, 206)
+		net_img.composite(self.net_image_mask, 0, 0)
+		return net_img
 
 class InvalidLayerError(DesignError):
 	layer: Layer
@@ -373,8 +549,6 @@ class MissingLayerError(InvalidLayerError):
 	message = 'Payload was missing one or more layers. First missing layer: "{0.layer.name}"'
 	http_status = HTTPStatus.BAD_REQUEST
 
-with open('data/net image.jpg', 'rb') as f:
-	dummy_net_image = f.read()
 with open('data/preview image.jpg', 'rb') as f:
 	dummy_preview_image = f.read()
 
@@ -426,7 +600,7 @@ def encode(design: Design) -> dict:
 	body['mMeta'] = meta
 	body['mData'] = img_data
 	encoded['body'] = msgpack.dumps(body)
-	encoded['net_image'] = dummy_net_image
+	encoded['net_image'] = design.net_image().make_blob('JPG')
 	encoded['preview_image'] = dummy_preview_image
 
 	return was_quantized, encoded

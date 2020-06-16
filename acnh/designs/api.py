@@ -5,11 +5,14 @@ import re
 import urllib.parse
 from http import HTTPStatus
 from functools import wraps
+from typing import Union
 
 import msgpack
 
 from ..common import acnh, ACNHError, InvalidFormatError
 from .. import utils
+
+DesignId = Union[str, int]
 
 class DesignError(ACNHError):
 	pass
@@ -55,25 +58,25 @@ def design_id(design_code):
 
 def design_code(design_id):
 	digits = []
-	group_count = 0
 	while design_id:
 		design_id, digit = divmod(design_id, 30)
 		digits.append(_design_code_alphabet[digit])
-		group_count += 1
-		if group_count == 4:
-			digits.append('-')
-			group_count = 0
 
-	if digits[-1] == '-':
-		digits.pop()
+	return add_hyphens(''.join(reversed(digits)).zfill(4 * 3))
 
-	return ''.join(reversed(digits)).zfill(4 * 3 + 2)
+def add_hyphens(author_id: str):
+	return '-'.join(utils.chunked(author_id, 4))
 
-def download_design(design_id, partial=False):
+def download_design(design_id_or_code: DesignId, partial=False):
+	if isinstance(design_id_or_code, str):
+		design_id_ = design_id(design_id_or_code)
+	else:
+		design_id_ = design_id_or_code
+
 	resp = acnh().request('GET', '/api/v2/designs', params={
 		'offset': 0,
 		'limit': 1,
-		'q[design_id]': design_id,
+		'q[design_id]': design_id_,
 	})
 	resp.raise_for_status()
 	resp = msgpack.loads(resp.content)
@@ -95,20 +98,25 @@ def download_design(design_id, partial=False):
 	data['updated_at'] = headers['updated_at']
 	return data
 
-def list_designs(creator_id: int, *, pro: bool):
+def list_designs(author_id: int, *, pro: bool):
 	resp = acnh().request('GET', '/api/v2/designs', params={
 		'offset': 0,
 		'limit': 120,
-		'q[player_id]': creator_id,
-		'q[pro]': ('false', 'true')[pro],
-		'with_binaries': 'false',
+		'q[player_id]': author_id,
+		'q[pro]': 'true' if pro else 'false',
+		'with_binaries': 'true',
 	})
 	resp.raise_for_status()
 	resp = msgpack.loads(resp.content)
 	return resp
 
-def delete_design(design_id) -> None:
-	resp = acnh().request('DELETE', '/api/v1/designs/' + str(design_id))
+def delete_design(design_id_or_code) -> None:
+	if isinstance(design_id_or_code, str):
+		design_id_ = design_id(design_id_or_code)
+	else:
+		design_id_ = design_id_or_code
+
+	resp = acnh().request('DELETE', '/api/v1/designs/' + str(design_id_))
 	if resp.status_code == HTTPStatus.NOT_FOUND:
 		raise UnknownDesignCodeError
 

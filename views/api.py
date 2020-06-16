@@ -39,6 +39,11 @@ class InvalidScaleFactorError(InvalidFormatError):
 	code = 23
 	regex = re.compile('[123456]')
 
+class CannotScaleThumbnailError:
+	message = 'cannot scale thumbnails'
+	code = 29
+	http_status = HTTPStatus.BAD_REQUEST
+
 @bp.route('/host-session/<dodo_code>')
 @limiter.limit('1 per 4 seconds')
 def host_session(dodo_code):
@@ -48,7 +53,7 @@ def host_session(dodo_code):
 @limiter.limit('5 per second')
 def design(design_code):
 	InvalidDesignCodeError.validate(design_code)
-	return designs_api.download_design(designs_api.design_id(design_code))
+	return designs_api.download_design(design_code)
 
 def get_scale_factor():
 	scale_factor = request.args.get('scale', '1')
@@ -68,7 +73,7 @@ def design_archive(design_code):
 	InvalidDesignCodeError.validate(design_code)
 	render_internal = 'internal_layers' in request.args
 	get_scale_factor()  # do the validation now since apparently it doesn't work in the generator
-	data = designs_api.download_design(designs_api.design_id(design_code))
+	data = designs_api.download_design(design_code)
 	meta, body = data['mMeta'], data['mData']
 	type_code = meta['mMtUse']
 	design_name = meta['mMtDNm']  # hungarian notation + camel case + abbreviations DO NOT mix well
@@ -80,7 +85,7 @@ def design_archive(design_code):
 		if type_code == BasicDesign.type_code or render_internal:
 			layers = designs_render.render_layers(body)
 		else:
-			layers = designs_render.render_external_layers(body, type_code).items()
+			layers = Design.from_data(data).layer_images.items()
 
 		for name, image in layers:
 			tarinfo = tarfile_stream.TarInfo(f'{design_name}/{name}.png')
@@ -104,20 +109,26 @@ def design_archive(design_code):
 		headers={'Content-Disposition': f"attachment; filename*=utf-8''{encoded_filename}"},
 	)
 
+# no rate limit as we need to render the thumbnails for all of an author's designs quickly
 @bp.route('/design/<design_code>/<layer>.png')
-@limiter.limit('6 per 5 seconds')
 def design_layer(design_code, layer):
 	InvalidDesignCodeError.validate(design_code)
-	data = designs_api.download_design(designs_api.design_id(design_code))
+	data = designs_api.download_design(design_code)
 	meta, body = data['mMeta'], data['mData']
 	type_code = meta['mMtUse']
 	design_name = meta['mMtDNm']
-	try:
-		layer_i = int(layer)
-	except ValueError:
-		rendered = designs_render.render_layer_name(body, layer, type_code)
+
+	if layer == 'thumbnail':
+		if request.args.get('scale', '1') != '1':
+			raise CannotScaleThumbnailError
+		rendered = Design.from_data(data).net_image()
 	else:
-		rendered = designs_render.render_layer(body, layer_i)
+		try:
+			layer_i = int(layer)
+		except ValueError:
+			rendered = designs_render.render_layer_name(data, layer)
+		else:
+			rendered = designs_render.render_layer(body, layer_i)
 
 	rendered = maybe_scale(rendered)
 	out = rendered.make_blob('png')
