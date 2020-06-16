@@ -29,14 +29,14 @@ class InvalidDesignCodeError(DesignError, InvalidFormatError):
 	regex = re.compile('-'.join([_design_code_segment] * 3))
 	del _design_code_segment
 
-class UnknownCreatorIdError(DesignError):
+class UnknownAuthorIdError(DesignError):
 	code = 23
-	message = 'unknown creator ID'
+	message = 'unknown author ID'
 	http_status = HTTPStatus.NOT_FOUND
 
-class InvalidCreatorIdError(DesignError, InvalidFormatError):
+class InvalidAuthorIdError(DesignError, InvalidFormatError):
 	code = 24
-	message = 'invalid creator ID'
+	message = 'invalid author ID'
 	regex = re.compile('\d{4}-?\d{4}-?\d{4}', re.ASCII)
 
 # not an invalid format error because it's not constrainable to a regex

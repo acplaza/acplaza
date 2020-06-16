@@ -133,16 +133,16 @@ class InvalidProArgument(DesignError, InvalidFormatError):
 	code = 25
 	regex = re.compile('[01]|(?:false|true)|[ft]', re.IGNORECASE)
 
-@bp.route('/designs/<creator_id>')
+@bp.route('/designs/<author_id>')
 @limiter.limit('5 per 1 seconds')
-def list_designs(creator_id):
-	creator_id = int(designs_api.InvalidCreatorIdError.validate(creator_id).replace('-', ''))
+def list_designs(author_id):
+	author_id = int(designs_api.InvalidAuthorIdError.validate(author_id).replace('-', ''))
 	pro = request.args.get('pro', 'false')
 	InvalidProArgument.validate(pro)
 
-	page = designs_api.list_designs(creator_id, offset=offset, limit=limit, pro=pro)
+	page = designs_api.list_designs(author_id, offset=offset, limit=limit, pro=pro)
 	page['creator_name'] = page['headers'][0]['design_player_name']
-	page['creator_id'] = page['headers'][0]['design_player_id']
+	page['author_id'] = page['headers'][0]['design_player_id']
 
 	for hdr in page['headers']:
 		hdr['design_code'] = designs_api.design_code(hdr['id'])
