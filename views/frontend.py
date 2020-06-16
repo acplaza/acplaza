@@ -73,3 +73,7 @@ def design(design_code):
 @bp.errorhandler(ACNHError)
 def handle_acnh_exception(ex):
 	return render_template('error.html', message=ex.message), ex.http_status
+
+@bp.errorhandler(utils.IncorrectAuthorizationError)
+def handle_not_logged_in(ex):
+	return redirect(url_for('.login'))

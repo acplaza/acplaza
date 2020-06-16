@@ -22,7 +22,6 @@ import syncpg
 from flask import current_app, g, request, session
 from flask_limiter.util import get_ipaddr
 from flask_wtf.csrf import CSRFProtect
-from werkzeug.exceptions import HTTPException
 
 # config comes first to resolve circular imports
 with open('config.toml') as f:
@@ -40,7 +39,6 @@ def init_app(app):
 	app.config['JSON_SORT_KEYS'] = False
 	app.config['SESSION_COOKIE_SAMESITE'] = 'Strict'
 	app.json_encoder = CustomJSONEncoder
-	app.errorhandler(HTTPException)(handle_exception)
 	app.teardown_appcontext(close_pgconn)
 	app.before_request(process_authorization)
 
@@ -61,7 +59,7 @@ class MissingUserAgentStringError(AuthorizationError):
 	message = 'User-Agent header required'
 	http_status = HTTPStatus.BAD_REQUEST
 
-class IncorrectAuthorizationHeader(AuthorizationError):
+class IncorrectAuthorizationError(AuthorizationError):
 	code = 92
 	message = 'invalid or incorrect Authorization header'
 	http_status = HTTPStatus.UNAUTHORIZED
@@ -95,10 +93,10 @@ def process_authorization():
 
 	token = request.headers.get('Authorization')
 	if not token:
-		raise IncorrectAuthorizationHeader
+		raise IncorrectAuthorizationError
 
 	if not validate_token(token):
-		raise IncorrectAuthorizationHeader
+		raise IncorrectAuthorizationError
 
 	request.user_id = user_id
 
@@ -147,19 +145,6 @@ class CustomJSONEncoder(flask.json.JSONEncoder):
 		if isinstance(x, asyncpg.Record):
 			return dict(x)
 		return super().default(x)
-
-def handle_exception(ex):
-	"""Return JSON instead of HTML for HTTP errors."""
-	# start with the correct headers and status code from the error
-	response = ex.get_response()
-	# replace the body with JSON
-	response.data = json.dumps({
-		'http_status': ex.code,
-		'http_status_name': ex.name,
-		'http_status_description': ex.description,
-	})
-	response.content_type = 'application/json'
-	return response
 
 def xbrz_scale_wand_in_subprocess(img: wand.image.Image, factor):
 	data = bytearray(img.export_pixels(channel_map='RGBA', storage='char'))

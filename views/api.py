@@ -13,6 +13,7 @@ import wand.image
 from flask import Blueprint, jsonify, current_app, request, stream_with_context, url_for, abort, session
 from flask_limiter import Limiter
 from flask_limiter.util import get_ipaddr
+from werkzeug.exceptions import HTTPException
 
 import acnh.common as common
 import acnh.dodo as dodo
@@ -29,7 +30,8 @@ from acnh.designs.encode import BasicDesign, Design, MissingLayerError, InvalidL
 def init_app(app):
 	app.register_blueprint(bp)
 	limiter.init_app(app)
-	app.errorhandler(utils.ACNHError)(handle_acnh_exception)
+	bp.errorhandler(utils.ACNHError)(handle_acnh_exception)
+	bp.errorhandler(HTTPException)(handle_exception)
 
 bp = Blueprint('api', __name__, url_prefix='/api/v0')
 limiter = Limiter(key_func=get_ipaddr)
@@ -307,5 +309,18 @@ def handle_acnh_exception(ex):
 	response = current_app.response_class()
 	response.status_code = d['http_status']
 	response.data = json.dumps(d)
+	response.content_type = 'application/json'
+	return response
+
+def handle_exception(ex):
+	"""Return JSON instead of HTML for HTTP errors."""
+	# start with the correct headers and status code from the error
+	response = ex.get_response()
+	# replace the body with JSON
+	response.data = json.dumps({
+		'http_status': ex.code,
+		'http_status_name': ex.name,
+		'http_status_description': ex.description,
+	})
 	response.content_type = 'application/json'
 	return response
