@@ -119,7 +119,12 @@ class ACNHClient:
 		headers = {}
 		if method in self.REQUEST_METHODS_WITH_BODIES:
 			headers['Content-Type'] = 'application/x-msgpack'
-		return self.session.request(method, self.BASE + path, headers=headers, **kwargs)
+
+		# allow fetching absolute URLs
+		if not path.startswith(self.BASE):
+			path = self.BASE + path
+
+		return self.session.request(method, path, headers=headers, **kwargs)
 
 	def __enter__(self):
 		return self.session.__enter__()
