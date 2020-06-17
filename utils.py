@@ -41,6 +41,7 @@ def init_app(app):
 	app.json_encoder = CustomJSONEncoder
 	app.teardown_appcontext(close_pgconn)
 	app.before_request(process_authorization)
+	app.errorhandler(ACNHError)(handle_acnh_exception)
 
 def pg():
 	with contextlib.suppress(AttributeError):
@@ -168,3 +169,12 @@ def xbrz_scale_wand_in_subprocess(img: wand.image.Image, factor):
 
 def image_to_base64_url(img: wand.image.Image):
 	return (b'data:image/png;base64,' + base64.b64encode(img.make_blob('png'))).decode()
+
+def handle_acnh_exception(ex):
+	"""Return JSON instead of HTML for ACNH errors"""
+	d = ex.to_dict()
+	response = current_app.response_class()
+	response.status_code = d['http_status']
+	response.data = json.dumps(d)
+	response.content_type = 'application/json'
+	return response

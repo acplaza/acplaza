@@ -30,7 +30,6 @@ from acnh.designs.encode import BasicDesign, Design, MissingLayerError, InvalidL
 def init_app(app):
 	app.register_blueprint(bp)
 	limiter.init_app(app)
-	bp.errorhandler(utils.ACNHError)(handle_acnh_exception)
 	bp.errorhandler(HTTPException)(handle_exception)
 
 bp = Blueprint('api', __name__, url_prefix='/api/v0')
@@ -302,15 +301,6 @@ def delete_image(image_id):
 	image_id = int(InvalidImageIdError.validate(image_id))
 	designs_db.delete_image(image_id, token)
 	return jsonify('OK')
-
-def handle_acnh_exception(ex):
-	"""Return JSON instead of HTML for ACNH errors"""
-	d = ex.to_dict()
-	response = current_app.response_class()
-	response.status_code = d['http_status']
-	response.data = json.dumps(d)
-	response.content_type = 'application/json'
-	return response
 
 def handle_exception(ex):
 	"""Return JSON instead of HTML for HTTP errors."""
