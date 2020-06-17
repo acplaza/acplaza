@@ -1,0 +1,26 @@
+.row {
+	align-items: baseline;
+	margin-left: unset;
+}
+.emoji {
+	font-family: initial;
+}
+.bg-success {
+	background-color: #28a745;
+	color: white;
+	padding: 1rem;
+}
+.bg-danger {
+	background-color: #dc3545;
+	color: white;
+	padding: 1rem;
+}
+.bg-warning {
+	background-color: #ffc107;
+	padding: 1rem;
+}
+.bg-info {
+	background-color: #007bff;
+	color: white;
+	padding: 1rem;
+}

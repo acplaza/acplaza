@@ -294,13 +294,7 @@ def format_created_design_results(gen):
 
 @bp.route('/image/<image_id>')
 def image(image_id):
-	rv = designs_db.image(int(InvalidImageIdError.validate(image_id)))
-	designs = rv['designs']
-	for i, design in enumerate(designs):
-		d = designs[i] = dict(design)
-		d['design_code'] = designs_api.design_code(design['design_id'])
-
-	return rv
+	return designs_db.image(int(InvalidImageIdError.validate(image_id)))
 
 class InvalidImageDeletionToken(ImageError, InvalidFormatError):
 	code = 42

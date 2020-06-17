@@ -1,0 +1,22 @@
+{% extends 'base.html' %}
+{% block title %}{{ image.image_name }}{% endblock %}
+{% block content %}
+	<p>Author: {{ image.author_name }}</p>
+	{% if session.user_id == image.author_id %}
+		<nav>
+			<form method=post action="/image/{{ image.image_id }}/delete">
+				<input type=hidden name=csrf_token value="{{ csrf_token() }}">
+				<input type=submit value="Delete this image">
+			</form>
+		</nav>
+	{% endif %}
+	{% for name, url in layers %}
+		<img alt="{{ name }}" title="{{ name }}" src="{{ url }}">
+	{% endfor %}
+	<h2>Active design codes</h2>
+	<ol>
+		{% for design in designs %}
+			<li>{{ design.design_code }}
+		{% endfor %}
+	</ol>
+{% endblock %}

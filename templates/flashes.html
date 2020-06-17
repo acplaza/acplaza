@@ -3,11 +3,11 @@
 		{% for category, message in messages %}
 			{# todo add coloring classes #}
 			{% if category == 'message' %}
-				<p>{{ message }}</p>
+				<p class=bg-info>{{ message }}</p>
 			{% elif category == 'success' %}
-				<p>{{ message }}</p>
+				<p class=bg-success>{{ message }}</p>
 			{% elif category == 'error' %}
-				<p>{{ message }}</p>
+				<p class=bg-danger>{{ message }}</p>
 			{% endif %}
 		{% endfor %}
 	{% endif %}

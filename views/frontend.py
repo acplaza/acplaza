@@ -4,7 +4,18 @@ import datetime as dt
 from http import HTTPStatus
 
 import msgpack
-from flask import Blueprint, render_template, session, request, redirect, url_for, current_app, stream_with_context
+import wand.image
+from flask import (
+	Blueprint,
+	render_template,
+	session,
+	request,
+	redirect,
+	url_for,
+	current_app,
+	stream_with_context,
+	flash,
+)
 from werkzeug.exceptions import HTTPException
 
 import utils
@@ -14,6 +25,7 @@ from acnh.common import ACNHError, acnh
 from acnh.designs import api as designs_api
 from acnh.designs import render as designs_render
 from acnh.designs import encode as designs_encode
+from acnh.designs import db as designs_db
 from utils import limiter
 
 def init_app(app):
@@ -190,6 +202,45 @@ def create_pro_design_form(design_type_name):
 		return redirect('/create-design')
 
 	return render_template('create_design_form.html', cls=cls)
+
+@bp.route('/image/<image_id>')
+def image(image_id):
+	image_id = int(api.InvalidImageIdError.validate(image_id))
+	data = designs_db.image(image_id)
+	image = data['image']
+	designs = data['designs']
+	cls = designs_encode.Design(image['type_code'])
+	cls_kwargs = dict(author_name=image['author_name'], design_name=image['image_name'])
+	if image['pro']:
+		layers = {}
+		for layer_def, blob in zip(cls.external_layers, image['layers']):
+			layers[layer_def.name] = img = layer_def.as_wand()
+			layer_def.import_pixels(data=blob, channel_map='RGBA')
+
+		design = cls(layers=layers, **cls_kwargs)
+
+		layers = (
+			(
+				name.capitalize().replace('-', ' '),
+				utils.image_to_base64_url(utils.xbrz_scale_wand_in_subprocess(image, 6))
+			)
+			for name, image
+			in layers.items()
+		)
+	else:
+		img = wand.image.Image(width=image['width'], height=image['height'])
+		img.import_pixels(data=image['layers'][0], channel_map='RGBA')
+		design = cls(**cls_kwargs, layers={'0': img})
+		layers = [('0', utils.image_to_base64_url(img))]
+
+	return render_template('image.html', image=image, design=design, layers=layers, designs=designs)
+
+@bp.route('/image/<image_id>/delete', methods=['POST'])
+def delete_image(image_id):
+	image_id = int(api.InvalidImageIdError.validate(image_id))
+	designs_db.delete_image(image_id)
+	flash('Image deleted successfully.', 'success')
+	return redirect('/')
 
 @bp.errorhandler(ACNHError)
 def handle_acnh_exception(ex):

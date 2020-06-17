@@ -4,16 +4,12 @@
 	<meta charset=utf-8>
 	<title>{% block title %}{% endblock %}</title>
 	<link rel=stylesheet href="/static/css/milligram.css">
-	<style>
-		.row {
-			align-items: baseline;
-			margin-left: unset;
-		}
-	</style>
+	<link rel=stylesheet href="/static/css/styles.css">
 </head>
 <body>
 	<div class=container>
 		<h1>{{ self.title() }}</h1>
+		{% include 'flashes.html' %}
 		{% block content %}
 		{% endblock %}
 	</div>

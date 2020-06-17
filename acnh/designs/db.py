@@ -9,6 +9,7 @@ from functools import partial
 from typing import Dict, Iterable, Tuple
 
 import wand.image
+from flask import session
 
 from ..common import ACNHError
 from . import api, encode
@@ -23,9 +24,9 @@ class UnknownImageIdError(ImageError):
 	message = 'unknown image ID'
 	http_status = HTTPStatus.NOT_FOUND
 
-class IncorrectImageDeletionTokenError(ImageError):
+class DeletionDeniedError(ImageError):
 	code = 32
-	message = 'incorrect image deletion token'
+	message = 'you do not own this image'
 	http_status = HTTPStatus.UNAUTHORIZED
 
 def garbage_collect_designs(needed_slots: int, *, pro: bool):
@@ -44,12 +45,13 @@ def garbage_collect_designs(needed_slots: int, *, pro: bool):
 			)
 	pg().execute(queries.delete_designs(), design_ids)
 
-def delete_image(image_id, deletion_token):
-	valid = pg().fetchval(queries.check_deletion_token(), image_id)
-	if valid is None:
+def delete_image(image_id):
+	image_author_id = pg().fetchval(queries.image_author_id(), image_id)
+	valid = image_author_id == session['user_id']
+	if image_author_id is None:
 		raise UnknownImageIdError
 	elif not valid:
-		raise IncorrectDeletionTokenError
+		raise DeletionDeniedError
 
 	with pg().transaction(isolation='serializable'):
 		design_ids = pg().fetchvals(queries.delete_image_designs(), image_id)
@@ -106,6 +108,7 @@ def create_pro_design(design):
 	image_id = pg().fetchval(
 		queries.create_image(),
 
+		session['user_id'],
 		design.author_name,
 		design.design_name,
 		None,
@@ -136,6 +139,7 @@ def create_basic_design(design, *, scale: bool):
 	image_id = pg().fetchval(
 		queries.create_image(),
 
+		session['user_id'],
 		design.author_name,
 		design.design_name,
 		image.width,
@@ -166,7 +170,17 @@ def create_design(*, image_id, design_id, position, pro):
 	pg().execute(queries.create_design(), image_id, design_id, position, pro)
 
 def image(image_id):
-	image = pg().fetchrow(queries.image(), image_id)
-	if image is None:
+	rows = pg().fetch(queries.image_designs(), image_id)
+	if not rows:
 		raise UnknownImageIdError
-	return {'image': image, 'designs': pg().fetch(queries.image_designs(), image_id)}
+	image = dict(rows[0])
+	# these are design fields not image fields
+	del image['design_id'], image['position']
+	designs = []
+	for row in rows:
+		design = {}
+		designs.append(design)
+		design['design_id'] = row['design_id']
+		design['design_code'] = api.design_code(row['design_id'])
+		design['position'] = row['position']
+	return {'image': image, 'designs': designs}

@@ -29,18 +29,18 @@ DELETE FROM designs
 WHERE design_id = ANY ($1)
 -- :endmacro
 
--- :macro check_deletion_token()
--- params: image_id, deletion_token
-SELECT deletion_token = $2
-FROM images
-WHERE image_id = $1
--- :endmacro
-
 -- :macro delete_image_designs()
 -- params: image_id
 DELETE FROM designs
 WHERE image_id = $1
 RETURNING design_id
+-- :endmacro
+
+-- :macro image_author_id()
+-- params: image_id
+SELECT author_id
+FROM images
+WHERE image_id = $1
 -- :endmacro
 
 -- :macro delete_image()
@@ -50,9 +50,8 @@ WHERE image_id = $1
 -- :endmacro
 
 -- :macro create_image()
--- params: author_name, image_name, width, height, layers, deletion_token
-INSERT INTO images (author_name, image_name, width, height, type_code, layers, deletion_token)
-VALUES ($1, $2, $3, $4, $5, $6, $7)
+INSERT INTO images (author_id, author_name, image_name, width, height, type_code, layers, deletion_token)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 RETURNING image_id
 -- :endmacro
 
@@ -72,8 +71,22 @@ WHERE image_id = $1
 
 -- :macro image_designs()
 -- params: image_id
-SELECT *
-FROM designs
+SELECT
+	image_id,
+	author_id,
+	author_name,
+	image_name,
+	images.created_at,
+	width,
+	height,
+	layers,
+	images.pro,
+	type_code,
+	design_id,
+	position
+FROM
+	images
+	LEFT JOIN designs USING (image_id)
 WHERE image_id = $1
 ORDER BY position
 -- :endmacro
