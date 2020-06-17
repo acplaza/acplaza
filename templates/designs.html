@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% block title %}{{ author_name }}'s {{ design_type }} designs{% endblock %}
 {% block content %}
-	<p>Author ID: MO-{{ author_id }}</p>
+	<p>Creator ID: MO-{{ author_id }}</p>
 	<nav>
 		{% from 'utils.html' import other_designs_link %}
 		{{ other_designs_link(author_id, pro) }}
