@@ -2,6 +2,7 @@
 {% block title %}Login{% endblock %}
 {% block content %}
 {% include 'flashes.html' %}
+	<p>Enter your token</p>
 	<form method=POST>
 		<input type=hidden name=csrf_token value="{{ csrf_token() }}">
 		<input name=token type=password>
