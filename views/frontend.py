@@ -4,7 +4,7 @@ import datetime as dt
 from http import HTTPStatus
 
 import msgpack
-from flask import Blueprint, render_template, session, request, redirect, url_for
+from flask import Blueprint, render_template, session, request, redirect, url_for, current_app, stream_with_context
 
 import utils
 from views import api
@@ -161,7 +161,21 @@ def pick_design_type_form():
 def create_basic_design_form():
 	return render_template('create_basic_design_form.html')
 
-bp.route('/create-design/basic-design', methods=['POST'])(api.create_image)
+def stream_template(template_name, **context):
+	current_app.update_template_context(context)
+	t = current_app.jinja_env.get_template(template_name)
+	rv = t.stream(context)
+	return rv
+
+@bp.route('/create-design/<_>', methods=['POST'])
+def create_image(_):
+	gen = stream_with_context(api._create_image())
+	image_id = next(gen)
+	def pretty_gen():
+		for was_quantized, design_id in gen:
+			yield was_quantized, designs_api.design_code(design_id)
+
+	return current_app.response_class(stream_template('created_image.html', image_id=image_id, results=pretty_gen()))
 
 @bp.route('/create-design/<design_type_name>')
 def create_pro_design_form(design_type_name):

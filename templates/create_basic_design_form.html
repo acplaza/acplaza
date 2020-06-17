@@ -67,8 +67,8 @@
 	<div class=form-row><input type=submit value="Upload"></div>
 	</form>
 	<script>
-		let scaleRadio = document.querySelector('#scale');
-		let tileRadio = document.querySelector('#tile');
+		let scaleRadio = document.getElementById('scale');
+		let tileRadio = document.getElementById('tile');
 		let resizeGroup = document.querySelector('#resize-group');
 		const scale = () => { resizeGroup.style.display = 'none'; };
 		const tile = () => { resizeGroup.style.display = 'block'; };

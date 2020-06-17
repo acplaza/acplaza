@@ -200,6 +200,13 @@ island_name = partial(random.choice, ISLAND_NAMES)
 @bp.route('/images', methods=['POST'])
 @limiter.limit('1 per 15s')
 def create_image():
+	gen = format_created_design_results(_create_image())
+	# Note: this is currently the only method (other than the rendering methods) which does *not* return JSON.
+	# This is due to its iterative nature. I considered using JSON anyway, but very few libraries
+	# support iterative JSON decoding, and we don't need anything other than an array anyway.
+	return current_app.response_class(stream_with_context(gen), mimetype='text/plain')
+
+def _create_image():
 	try:
 		image_name = request.values['image_name']
 	except KeyError:
@@ -229,13 +236,14 @@ def create_pro_image(image_name, author_name, design_type_name):
 		design_name=image_name,
 		layers=layers,
 	)
+
 	def gen():
 		with contextlib.ExitStack() as stack:
 			for img in layers.values():
 				stack.enter_context(img)
-			yield from format_created_design_results(designs_db.create_image(design))
+			yield from designs_db.create_image(design)
 
-	return current_app.response_class(stream_with_context(gen()), mimetype='text/plain')
+	return gen()
 
 def create_basic_image(image_name, author_name):
 	width = height = None
@@ -277,12 +285,9 @@ def create_basic_image(image_name, author_name):
 
 	def gen():
 		with img:
-			yield from format_created_design_results(designs_db.create_image(design, scale=scale))
+			yield from designs_db.create_image(design, scale=scale)
 
-	# Note: this is currently the only method (other than the rendering methods) which does *not* return JSON.
-	# This is due to its iterative nature. I considered using JSON anyway, but very few libraries
-	# support iterative JSON decoding, and we don't need anything other than an array anyway.
-	return current_app.response_class(stream_with_context(gen()), mimetype='text/plain')
+	return gen()
 
 def format_created_design_results(gen):
 	image_id = next(gen)
