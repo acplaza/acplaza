@@ -41,16 +41,17 @@ def login():
 		# with the form
 		abort(HTTPStatus.UNAUTHORIZED)
 
-	if not utils.validate_token(token):
+	user_id, secret = utils.validate_token(token)
+	if not user_id:
 		return 'auth failed', HTTPStatus.UNAUTHORIZED
 
-	session['authed'] = 1
+	session['user_id'] = user_id
 	return redirect('/')
 
 @bp.route('/logout')
 @utils.token_exempt
 def logout():
-	session.pop('authed', None)
+	session.clear()
 	return redirect('/')
 
 @bp.route('/')

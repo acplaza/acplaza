@@ -84,9 +84,6 @@ def token_exempt(view):
 def process_authorization():
 	request.user_id = None
 
-	if get_ipaddr() == '127.0.0.1':
-		return
-
 	if not request.endpoint:
 		return
 
@@ -98,7 +95,7 @@ def process_authorization():
 	if not request.headers.get('User-Agent'):
 		raise MissingUserAgentStringError
 
-	if session.get('authed'):
+	if session.get('user_id'):
 		return
 
 	token = request.headers.get('Authorization')
@@ -115,7 +112,7 @@ def validate_token(token):
 	try:
 		user_id, secret = parse_token(token)
 	except ValueError:
-		return False
+		return False, False
 
 	db_secret = pg().fetchval(queries.secret(), user_id)
 	if db_secret is None:
