@@ -1,6 +1,7 @@
 {% extends 'base.html' %}
 {% block title %}Results{% endblock %}
 {% block content %}
+	<a href="/image/{{ image_id }}">View your new design</a>
 	<h2>Design codes</h2>
 	<ul>
 		{% for was_quantized, design_code in results %}
