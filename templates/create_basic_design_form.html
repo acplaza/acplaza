@@ -5,9 +5,20 @@
 		#resize-group {
 			display: none;
 		}
-		.required::before {
+		.required::after {
 			color: red;
-			content: '* ';
+			content: ' *';
+		}
+		/* copied from milligram's label styles */
+		.form-question {
+			display: block;
+			font-size: 1.6rem;
+			font-weight: 700;
+			margin-bottom: .5rem;
+		}
+		#x {
+			font-size: 3.2rem;
+			font-weight: 700;
 		}
 	</style>
 	<form method=post enctype="multipart/form-data">
@@ -20,7 +31,7 @@
 			<input type=text name=image_name id=image_name maxlength=20 required>
 			<label for=author_name>Author name</label>
 			<input type=text name=author_name id=author_name maxlength=20 placeholder="Anonymous">
-			<p class=required>Would you like to create one design or split it up and tile it?</p>
+			<div class="required form-question">Would you like to create one design or split it up and tile it?</div>
 			<div>
 				<input type=radio id=scale name=mode value=scale checked required>
 				<label class=label-inline for=scale>Scale</label>
@@ -34,7 +45,7 @@
 				{% from 'utils.html' import numeric_input_attrs %}
 				<div class=row>
 					<input {{ numeric_input_attrs }} name=resize-width placeholder="Width"><!--
-					-->×<input {{ numeric_input_attrs }} name=resize-height placeholder="Height">
+					--><span id="x">×</span><input {{ numeric_input_attrs }} name=resize-height placeholder="Height">
 				</div>
 			</div>
 			<input type=submit value="Upload">
