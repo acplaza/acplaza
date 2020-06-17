@@ -26,7 +26,6 @@ from utils import limiter
 
 def init_app(app):
 	app.register_blueprint(bp)
-	bp.errorhandler(HTTPException)(handle_exception)
 
 bp = Blueprint('api', __name__, url_prefix='/api/v0')
 
@@ -313,6 +312,7 @@ def delete_image(image_id):
 	designs_db.delete_image(image_id, token)
 	return jsonify('OK')
 
+@bp.errorhandler(HTTPException)
 def handle_exception(ex):
 	"""Return JSON instead of HTML for HTTP errors."""
 	# start with the correct headers and status code from the error
