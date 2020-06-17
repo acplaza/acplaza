@@ -43,6 +43,12 @@ def login():
 	session['authed'] = 1
 	return redirect('/')
 
+@bp.route('/logout')
+@utils.token_exempt
+def logout():
+	session.pop('authed', None)
+	return redirect('/')
+
 @bp.route('/')
 def index():
 	return render_template('index.html')
