@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+{% block title %}{{ name }}{% endblock %}
+{% block content %}
+	<style>
+		th {
+			text-align: left;
+		}
+	</style>
+	<table>
+		<tr><th>Host<td>{{ host }}
+		<tr><th>Island name<td>{{ name }}
+		<tr><th>Active players<td>{{ active_players }}
+		<tr><th>Start time<td>{{ start_time }}
+	</table>
+{% endblock %}

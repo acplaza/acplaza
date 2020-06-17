@@ -8,6 +8,7 @@ from flask import Blueprint, render_template, session, request, redirect, url_fo
 
 import utils
 from views import api
+from acnh import dodo
 from acnh.common import ACNHError, acnh
 from acnh.designs import api as designs_api
 from acnh.designs import render as designs_render
@@ -15,6 +16,9 @@ from acnh.designs import encode as designs_encode
 
 def init_app(app):
 	app.register_blueprint(bp)
+	app.add_template_global(designs_api.InvalidDesignCodeError.regex.pattern, name='design_code_regex')
+	app.add_template_global(designs_api.InvalidAuthorIdError.regex.pattern, name='author_id_regex')
+	app.add_template_global(dodo.InvalidDodoCodeError.regex.pattern, name='dodo_code_regex')
 
 bp = Blueprint('frontend', __name__)
 
@@ -39,19 +43,35 @@ def login():
 	session['authed'] = 1
 	return 'OK'
 
+@bp.route('/')
+def index():
+	return render_template('index.html')
+
+@bp.route('/host-session/')
+def host_session_form():
+	try:
+		return redirect(url_for('.host_session', dodo_code=request.args['dodo_code']))
+	except KeyError:
+		return render_template('host_session_form.html')
+
+@bp.route('/host-session/<dodo_code>')
+def host_session(dodo_code):
+	data = dodo.search_dodo_code(dodo_code)
+	return render_template('host_session.html', **data)
+
 @bp.route('/design/')
 def design_form():
 	try:
 		return redirect(url_for('.design', design_code=request.args['design_code']))
 	except KeyError:
-		return render_template('design_form.html', design_code_regex=designs_api.InvalidDesignCodeError.regex.pattern)
+		return render_template('design_form.html')
 
 @bp.route('/designs/')
 def designs_form():
 	try:
 		return redirect(url_for('.basic_designs', author_id=request.args['author_id']))
 	except KeyError:
-		return render_template('designs_form.html', author_id_regex=designs_api.InvalidAuthorIdError.regex.pattern)
+		return render_template('designs_form.html')
 
 bp.route('/design/<design_code>/<layer>.png')(api.design_layer)
 bp.route('/design/<design_code>.tar')(api.design_archive)
