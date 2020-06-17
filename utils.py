@@ -116,12 +116,15 @@ def validate_token(token):
 	return True
 
 def encode_token(user_id, secret):
-	return base64.b64encode(user_id.to_bytes(4, byteorder='big')).decode() + '.' + base64.b64encode(secret).decode()
+	left = str(user_id)
+	right = base64.urlsafe_b64encode(secret).rstrip(b'=').decode('ascii')
+	return left + '.' + right
 
 def parse_token(token):
 	id, secret = token.encode().split(b'.')
-	# big endian is used cause it's easier to read at a glance
-	return int.from_bytes(base64.b64decode(id), byteorder='big'), base64.b64decode(secret)
+	# restore padding
+	secret += b'=' * -len(secret) % 4
+	return int(id), base64.urlsafe_b64decode(secret)
 
 def close_pgconn(_):
 	with contextlib.suppress(AttributeError):

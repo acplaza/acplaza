@@ -41,7 +41,7 @@ def login():
 		return 'auth failed', HTTPStatus.UNAUTHORIZED
 
 	session['authed'] = 1
-	return 'OK'
+	return redirect('/')
 
 @bp.route('/')
 def index():

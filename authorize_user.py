@@ -10,4 +10,3 @@ with app.app_context():
 	secret = secrets.token_bytes()
 	user_id = pg().fetchval(queries.authorize_user(), secret, username)
 	print(encode_token(user_id, secret))
-
