@@ -123,7 +123,7 @@ def encode_token(user_id, secret):
 def parse_token(token):
 	id, secret = token.encode().split(b'.')
 	# restore padding
-	secret += b'=' * -len(secret) % 4
+	secret += b'=' * (-len(secret) % 4)
 	return int(id), base64.urlsafe_b64decode(secret)
 
 def close_pgconn(_):
