@@ -4,7 +4,7 @@
 	<h2>Design codes</h2>
 	<ul>
 		{% for was_quantized, design_code in results %}
-			<li>{% if was_quantized %}<span title="This section of the image had to be quantized to fit the game's 16 color limit.">⚠️</span>{% endif %} <a href="/design/{{ design_code }}">{{ design_code }}</a>
+			<li>{% if was_quantized %}<span title="This section of the image had to be quantized to fit the game's 16 color limit.">⚠️</span>{% endif %} <a href="/design/{{ design_code }}">MA-{{ design_code }}</a>
 		{% endfor %}
 	</ul>
 {% endblock %}
