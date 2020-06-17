@@ -209,7 +209,7 @@ def _create_image():
 	except KeyError:
 		raise InvalidImageArgument('image_name')
 
-	author_name = request.values.get('author_name', 'Anonymous')  # we are legion
+	author_name = request.values.get('author_name') or 'Anonymous'  # we are legion
 
 	try:
 		design_type_name = request.values['design_type']
