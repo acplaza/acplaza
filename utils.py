@@ -96,7 +96,8 @@ def process_authorization():
 	if not token:
 		raise IncorrectAuthorizationError
 
-	if not validate_token(token):
+	user_id, secret = validate_token(token)
+	if not user_id:
 		raise IncorrectAuthorizationError
 
 	request.user_id = user_id
@@ -109,12 +110,12 @@ def validate_token(token):
 
 	db_secret = pg().fetchval(queries.secret(), user_id)
 	if db_secret is None:
-		return False
+		return False, False
 
 	if not secrets.compare_digest(secret, db_secret):
-		return False
+		return False, False
 
-	return True
+	return user_id, secret
 
 def encode_token(user_id, secret):
 	left = str(user_id)
