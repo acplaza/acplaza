@@ -115,12 +115,12 @@ def design(design_code):
 	)
 
 @bp.route('/designs/<author_id>')
-@limiter.limit('1 per 5 seconds')
+@limiter.limit('5 per 25 seconds')
 def basic_designs(author_id):
 	return designs(author_id, pro=False)
 
 @bp.route('/pro-designs/<author_id>')
-@limiter.limit('1 per 5 seconds')
+@limiter.limit('5 per 25 seconds')
 def pro_designs(author_id):
 	return designs(author_id, pro=True)
 
