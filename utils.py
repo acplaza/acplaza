@@ -73,7 +73,6 @@ def token_exempt(view):
 
 def process_authorization():
 	request.user_id = None
-	session.setdefault('authed', False)
 
 	if get_ipaddr() == '127.0.0.1':
 		return
@@ -89,7 +88,7 @@ def process_authorization():
 	if not request.headers.get('User-Agent'):
 		raise MissingUserAgentStringError
 
-	if session['authed']:
+	if session.get('authed'):
 		return
 
 	token = request.headers.get('Authorization')
