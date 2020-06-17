@@ -1,6 +1,9 @@
 # generate this using secrets.token_urlsafe() or using pwgen(1)
 flask-secret-key = '...'
 
+# how many reverse proxies that add X-Forwarded-For headers is your site behind?
+num-reverse-proxies = 1
+
 # You can get your user id and password from
 # su/baas/<guid>.dat in save folder 8000000000000010.
 

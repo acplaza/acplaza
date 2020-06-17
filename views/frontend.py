@@ -5,6 +5,7 @@ from http import HTTPStatus
 
 import msgpack
 from flask import Blueprint, render_template, session, request, redirect, url_for, current_app, stream_with_context
+from werkzeug.exceptions import HTTPException
 
 import utils
 from views import api
@@ -13,6 +14,7 @@ from acnh.common import ACNHError, acnh
 from acnh.designs import api as designs_api
 from acnh.designs import render as designs_render
 from acnh.designs import encode as designs_encode
+from utils import limiter
 
 def init_app(app):
 	app.register_blueprint(bp)
@@ -30,6 +32,7 @@ def login_form():
 
 @bp.route('/login', methods=['POST'])
 @utils.token_exempt
+@limiter.limit('1 per 5 seconds')
 def login():
 	try:
 		token = request.form['token']
@@ -62,6 +65,7 @@ def host_session_form():
 		return render_template('host_session_form.html')
 
 @bp.route('/host-session/<dodo_code>')
+@limiter.limit('1 per 4 seconds')
 def host_session(dodo_code):
 	data = dodo.search_dodo_code(dodo_code)
 	return render_template('host_session.html', **data)
@@ -84,6 +88,7 @@ bp.route('/design/<design_code>/<layer>.png')(api.design_layer)
 bp.route('/design/<design_code>.tar')(api.design_archive)
 
 @bp.route('/design/<design_code>')
+@limiter.limit('2 per 10 seconds')
 def design(design_code):
 	data = designs_api.download_design(design_code)
 	meta = data['mMeta']
@@ -110,10 +115,12 @@ def design(design_code):
 	)
 
 @bp.route('/designs/<author_id>')
+@limiter.limit('1 per 5 seconds')
 def basic_designs(author_id):
 	return designs(author_id, pro=False)
 
 @bp.route('/pro-designs/<author_id>')
+@limiter.limit('1 per 5 seconds')
 def pro_designs(author_id):
 	return designs(author_id, pro=True)
 
@@ -161,13 +168,8 @@ def pick_design_type_form():
 def create_basic_design_form():
 	return render_template('create_basic_design_form.html')
 
-def stream_template(template_name, **context):
-	current_app.update_template_context(context)
-	t = current_app.jinja_env.get_template(template_name)
-	rv = t.stream(context)
-	return rv
-
 @bp.route('/create-design/<_>', methods=['POST'])
+@limiter.limit('1 per 15 seconds')
 def create_image(_):
 	gen = stream_with_context(api._create_image())
 	image_id = next(gen)
@@ -175,7 +177,9 @@ def create_image(_):
 		for was_quantized, design_id in gen:
 			yield was_quantized, designs_api.design_code(design_id)
 
-	return current_app.response_class(stream_template('created_image.html', image_id=image_id, results=pretty_gen()))
+	return current_app.response_class(
+		utils.stream_template('created_image.html', image_id=image_id, results=pretty_gen())
+	)
 
 @bp.route('/create-design/<design_type_name>')
 def create_pro_design_form(design_type_name):
@@ -189,7 +193,11 @@ def create_pro_design_form(design_type_name):
 @bp.errorhandler(ACNHError)
 def handle_acnh_exception(ex):
 	d = ex.to_dict()
-	return render_template('error.html', message=d['error']), ex.http_status
+	return render_template('error.html', message=d['error']), d['http_status']
+
+@bp.errorhandler(HTTPException)
+def handle_http_exception(ex):
+	return render_template('error.html', message=ex.name, description=ex.get_description())
 
 @bp.errorhandler(utils.IncorrectAuthorizationError)
 def handle_not_logged_in(ex):

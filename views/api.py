@@ -11,8 +11,6 @@ from http import HTTPStatus
 import xbrz
 import wand.image
 from flask import Blueprint, jsonify, current_app, request, stream_with_context, url_for, abort, session
-from flask_limiter import Limiter
-from flask_limiter.util import get_ipaddr
 from werkzeug.exceptions import HTTPException
 
 import acnh.common as common
@@ -26,14 +24,13 @@ from acnh.common import InvalidFormatError
 from acnh.designs.api import DesignError, InvalidDesignCodeError
 from acnh.designs.db import ImageError
 from acnh.designs.encode import BasicDesign, Design, MissingLayerError, InvalidLayerNameError
+from utils import limiter
 
 def init_app(app):
 	app.register_blueprint(bp)
-	limiter.init_app(app)
 	bp.errorhandler(HTTPException)(handle_exception)
 
 bp = Blueprint('api', __name__, url_prefix='/api/v0')
-limiter = Limiter(key_func=get_ipaddr)
 
 class InvalidScaleFactorError(InvalidFormatError):
 	message = 'invalid scale factor'

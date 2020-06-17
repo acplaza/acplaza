@@ -1,2 +1,7 @@
 {% extends 'base.html' %}
 {% block title %}{{ message }}{% endblock %}
+{% block content %}
+	{% if description is defined %}
+		{{ description|safe }}
+	{% endif %}
+{% endblock %}

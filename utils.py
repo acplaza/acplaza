@@ -20,12 +20,21 @@ import toml
 import asyncpg
 import syncpg
 from flask import current_app, g, request, session
-from flask_limiter.util import get_ipaddr
 from flask_wtf.csrf import CSRFProtect
+from flask_limiter import Limiter
 
 # config comes first to resolve circular imports
 with open('config.toml') as f:
 	config = toml.load(f)
+
+num_reverse_proxies = config.get('num-reverse-proxies', 1)
+
+def get_ipaddr():
+	if request.access_route:
+		return request.access_route[-num_reverse_proxies]
+	return request.remote_addr or '127.0.0.1'
+
+limiter = Limiter(key_func=get_ipaddr)
 
 if os.name != 'nt':
 	# this is pretty gay but it's necessary to make uwsgi work since sys.executable is uwsgi otherwise
@@ -42,6 +51,7 @@ def init_app(app):
 	app.teardown_appcontext(close_pgconn)
 	app.before_request(process_authorization)
 	app.errorhandler(ACNHError)(handle_acnh_exception)
+	limiter.init_app(app)
 
 def pg():
 	with contextlib.suppress(AttributeError):
@@ -178,3 +188,9 @@ def handle_acnh_exception(ex):
 	response.data = json.dumps(d)
 	response.content_type = 'application/json'
 	return response
+
+def stream_template(template_name, **context):
+	current_app.update_template_context(context)
+	t = current_app.jinja_env.get_template(template_name)
+	rv = t.stream(context)
+	return rv
