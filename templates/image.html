@@ -13,10 +13,20 @@
 	{% for name, url in layers %}
 		<img alt="{{ name }}" title="{{ name }}" src="{{ url }}">
 	{% endfor %}
+	{% if designs|length < required_design_count %}
+		<p>
+			Some designs have been deleted to save space.
+			<a href="/refresh-image/{{ image.image_id }}">Recreate them</a>
+		</p>
+	{% endif %}
 	<h2>Active design codes</h2>
 	<ol>
 		{% for design in designs %}
-			<li>{{ design.design_code }}
+			{% if loop.previtem is defined and design.position - loop.previtem.position > 1 %}
+				</ol>
+				<ol start="{{ design.position }}">
+			{% endif %}
+			<li>{{ design.design_code }}	
 		{% endfor %}
 	</ol>
 {% endblock %}

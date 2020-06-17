@@ -52,7 +52,9 @@ if os.name != 'nt':
 from acnh.common import ACNHError
 
 def init_app(app):
-	CSRFProtect(app)
+	csrf = CSRFProtect(app)
+	import views.api  # resolve circular import
+	csrf.exempt(views.api.bp)
 	app.secret_key = config['flask-secret-key']
 	app.config['JSON_SORT_KEYS'] = False
 	app.config['SESSION_COOKIE_SAMESITE'] = 'Strict'

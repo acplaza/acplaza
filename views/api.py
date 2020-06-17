@@ -2,10 +2,8 @@ import contextlib
 import datetime as dt
 import io
 import json
-import random
 import re
 import urllib.parse
-from functools import partial
 from http import HTTPStatus
 
 import xbrz
@@ -186,14 +184,6 @@ class InvalidImageIdError(ImageError, InvalidFormatError):
 	message = 'Invalid image ID.'
 	regex = re.compile('[0-9]+')
 
-ISLAND_NAMES = [
-	'The Cloud',
-	'Black Lives Matter',
-	'ACAB',
-]
-
-island_name = partial(random.choice, ISLAND_NAMES)
-
 @bp.route('/images', methods=['POST'])
 @limiter.limit('1 per 15s')
 def create_image():
@@ -228,7 +218,7 @@ def create_pro_image(image_name, author_name, design_type_name):
 
 	design = Design(
 		design_type_name,
-		island_name=island_name(),
+		island_name=designs_db.island_name(),
 		author_name=author_name,
 		design_name=image_name,
 		layers=layers,
@@ -278,7 +268,12 @@ def create_basic_image(image_name, author_name):
 	# do this again now because custom exception handlers don't run for generators ¯\_(ツ)_/¯
 	designs_db.TiledImageTooBigError.validate(img)
 
-	design = BasicDesign(island_name=island_name(), author_name=author_name, design_name=image_name, layers={'0': img})
+	design = BasicDesign(
+		island_name=designs_db.island_name(),
+		author_name=author_name,
+		design_name=image_name,
+		layers={'0': img},
+	)
 
 	def gen():
 		with img:
@@ -286,15 +281,25 @@ def create_basic_image(image_name, author_name):
 
 	return gen()
 
-def format_created_design_results(gen):
-	image_id = next(gen)
-	yield str(image_id) + '\n'
+def format_created_design_results(gen, *, header=True):
+	if header:
+		image_id = next(gen)
+		yield str(image_id) + '\n'
+
 	for was_quantized, design_id in gen:
 		yield f'{int(was_quantized)},{designs_api.design_code(design_id)}\n'
 
 @bp.route('/image/<image_id>')
 def image(image_id):
 	return designs_db.image(int(InvalidImageIdError.validate(image_id)))
+
+@bp.route('/image/<image_id>/refresh', methods=['POST'])
+def refresh_image(image_id):
+	gen = stream_with_context(format_created_design_results(_refresh_image(image_id), header=False))
+	return current_app.response_class(gen, mimetype='text/plain')
+
+def _refresh_image(image_id):
+	return designs_db.refresh_image(int(InvalidImageIdError.validate(image_id)))
 
 class InvalidImageDeletionToken(ImageError, InvalidFormatError):
 	code = 42

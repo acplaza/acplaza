@@ -50,7 +50,7 @@ WHERE image_id = $1
 -- :endmacro
 
 -- :macro create_image()
-INSERT INTO images (author_id, author_name, image_name, width, height, type_code, layers, deletion_token)
+INSERT INTO images (author_id, author_name, image_name, width, height, mode, type_code, layers)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 RETURNING image_id
 -- :endmacro
@@ -69,7 +69,7 @@ FROM images
 WHERE image_id = $1
 -- :endmacro
 
--- :macro image_designs()
+-- :macro image_with_designs()
 -- params: image_id
 SELECT
 	image_id,
@@ -79,6 +79,7 @@ SELECT
 	images.created_at,
 	width,
 	height,
+	mode,
 	layers,
 	images.pro,
 	type_code,
@@ -87,6 +88,14 @@ SELECT
 FROM
 	images
 	LEFT JOIN designs USING (image_id)
+WHERE image_id = $1
+ORDER BY position
+-- :endmacro
+
+-- :macro image_designs()
+-- params: image_id
+SELECT *
+FROM designs
 WHERE image_id = $1
 ORDER BY position
 -- :endmacro

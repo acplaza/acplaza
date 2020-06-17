@@ -204,6 +204,7 @@ def create_pro_design_form(design_type_name):
 	return render_template('create_design_form.html', cls=cls)
 
 @bp.route('/image/<image_id>')
+@utils.token_exempt
 def image(image_id):
 	image_id = int(api.InvalidImageIdError.validate(image_id))
 	data = designs_db.image(image_id)
@@ -233,7 +234,23 @@ def image(image_id):
 		design = cls(**cls_kwargs, layers={'0': img})
 		layers = [('0', utils.image_to_base64_url(img))]
 
-	return render_template('image.html', image=image, design=design, layers=layers, designs=designs)
+	required_design_count = 1 if image['pro'] else designs_db.num_tiles(img.width, img.height)
+
+	return render_template(
+		'image.html',
+		image=image, design=design, layers=layers, designs=designs, required_design_count=required_design_count,
+	)
+
+@bp.route('/refresh-image/<image_id>')
+@utils.token_exempt
+# no rate limit because this endpoint has no effect if it doesn't need to run
+def refresh_image(image_id):
+	image_id = int(api.InvalidImageIdError.validate(image_id))
+	for _ in designs_db.refresh_image(image_id):
+		pass
+
+	flash('Image refreshed successfully.', 'success')
+	return redirect(f'/image/{image_id}')
 
 @bp.route('/image/<image_id>/delete', methods=['POST'])
 def delete_image(image_id):
