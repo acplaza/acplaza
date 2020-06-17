@@ -252,8 +252,8 @@ SHORT_SLEEVE_CORRESPONDENCE = [
 ]
 
 LONG_SLEEVE_CORRESPONDENCE = [
-	LayerCorrespondence(2, 'right-sleeve', (1, 10), (0, 0), LONG_SLEEVE),
-	LayerCorrespondence(3, 'left-sleeve', (1, 10), (0, 0), LONG_SLEEVE),
+	LayerCorrespondence(2, 'right-sleeve', (5, 10), (0, 0), LONG_SLEEVE),
+	LayerCorrespondence(3, 'left-sleeve', (5, 10), (0, 0), LONG_SLEEVE),
 ]
 
 WIDE_SLEEVE_CORRESPONDENCE = [
