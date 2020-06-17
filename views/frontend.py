@@ -75,7 +75,7 @@ def host_session_form():
 	try:
 		return redirect(url_for('.host_session', dodo_code=request.args['dodo_code']))
 	except KeyError:
-		return render_template('host_session_form.html')
+		return redirect('/')
 
 @bp.route('/host-session/<dodo_code>')
 @limiter.limit('1 per 4 seconds')
@@ -88,14 +88,14 @@ def design_form():
 	try:
 		return redirect(url_for('.design', design_code=request.args['design_code']))
 	except KeyError:
-		return render_template('design_form.html')
+		return redirect('/')
 
 @bp.route('/designs/')
 def designs_form():
 	try:
 		return redirect(url_for('.basic_designs', author_id=request.args['author_id']))
 	except KeyError:
-		return render_template('designs_form.html')
+		return redirect('/')
 
 bp.route('/design/<design_code>/<layer>.png')(api.design_layer)
 bp.route('/design/<design_code>.tar')(api.design_archive)
