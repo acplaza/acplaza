@@ -34,7 +34,16 @@ def get_ipaddr():
 		return request.access_route[-num_reverse_proxies]
 	return request.remote_addr or '127.0.0.1'
 
-limiter = Limiter(key_func=get_ipaddr)
+def limiter_key():
+	with contextlib.suppress(KeyError):
+		return session['user_id']
+
+	with contextlib.suppress(AttributeError):
+		return request.user_id
+
+	return get_ipaddr()
+
+limiter = Limiter(key_func=limiter_key)
 
 if os.name != 'nt':
 	# this is pretty gay but it's necessary to make uwsgi work since sys.executable is uwsgi otherwise
