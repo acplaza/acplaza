@@ -52,6 +52,7 @@ def init_app(app):
 	app.before_request(process_authorization)
 	app.errorhandler(ACNHError)(handle_acnh_exception)
 	limiter.init_app(app)
+	token_exempt(app.send_static_file)
 
 def pg():
 	with contextlib.suppress(AttributeError):
