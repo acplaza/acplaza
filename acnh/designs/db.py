@@ -158,9 +158,6 @@ def create_basic_design(design, *, scale: bool):
 		# designs get out of order if we post them too fast
 		time.sleep(0.5)
 		was_quantized, encoded = encode.encode(sub_design)
-		with open('fuckme', 'wb') as f:
-			import msgpack
-			msgpack.dump(encoded, f)
 		design_id = api.create_design(encoded)
 		create_design(image_id=image_id, design_id=design_id, position=i, pro=False)
 		yield was_quantized, design_id
