@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+{% block title %}Create a {{ cls.display_name|lower }}{% endblock %}
+{% block content %}
+	<p>Please upload an image for each part of the design. All images must use the same 15 color palette.</p>
+	<form method=POST enctype="multipart/form-data">
+		<input type=hidden name=csrf_token value="{{ csrf_token() }}">
+		<input type=hidden name=design_type value="{{ cls.name }}">
+		{% for layer in cls.external_layers %}
+			<div><label>
+				{{ layer.display_name }} ({{ layer.width }}×{{ layer.height }})
+				<input type=file name="{{ layer.name }}">
+			</label></div>
+		{% endfor %}
+		<input type=submit value="Upload">
+	</form>
+{% endblock %}

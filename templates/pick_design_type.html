@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+{% block title %}Create a design{% endblock %}
+{% block content %}
+	<p>Choose how to use this custom design</p>
+	<h3>Basic design</h3>
+	<a href="/create-design/basic-design">Create a basic design</a>
+	{% for category, design_types in design_categories.items() %}
+		<h3>{{ category }}</h3>
+		<nav><ul>
+			{% for design_type in design_types %}
+				<li><a href="/create-design/{{ design_type.name }}">{{ design_type.display_name }}</a>
+			{% endfor %}
+		</ul></nav>
+	{% endfor %}
+{% endblock %}

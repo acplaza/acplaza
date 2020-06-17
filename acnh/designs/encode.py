@@ -8,7 +8,7 @@ import re
 import random
 import struct
 from dataclasses import dataclass, field
-from typing import List, Dict, Type, ClassVar, Tuple, Optional
+from typing import List, Dict, Type, ClassVar, Tuple, Optional, DefaultDict
 from http import HTTPStatus
 
 import wand.image
@@ -50,7 +50,11 @@ class LayerMeta(type):
 @dataclass
 class Layer(metaclass=LayerMeta):
 	name: str
+	display_name: str = field(init=False)
 	size: Tuple[int, int]
+
+	def __post_init__(self):
+		self.display_name = self.name.capitalize().replace('-', ' ')
 
 	def as_wand(self) -> wand.image.Image:
 		im = wand.image.Image(width=self.size[0], height=self.size[1])
@@ -61,12 +65,21 @@ class Layer(metaclass=LayerMeta):
 		if image.size != self.size:
 			raise InvalidLayerSizeError(self.name)
 
+	@property
+	def width(self):
+		return self.size[0]
+
+	@property
+	def height(self):
+		return self.size[1]
+
 NET_IMAGE_BASE = Layer('', (240, 240)).as_wand()
 
 class Design:
 	# shared static vars
 	design_types: ClassVar[Dict[str, Type['Design']]] = {}
 	design_type_codes: ClassVar[Dict[int, Type['Design']]] = {}
+	categories: DefaultDict[str, List[Type['Design']]] = DefaultDict(list)
 
 	# per-class static vars
 	type_code: ClassVar[int]
@@ -77,6 +90,7 @@ class Design:
 	# the layers that are sent to the API
 	internal_layers: ClassVar[List[Optional[Layer]]]
 	correspondence: ClassVar[Optional[List[LayerCorrespondence]]]
+	category: ClassVar[str]
 
 	# instance vars
 	author_id: Optional[int]
@@ -98,6 +112,8 @@ class Design:
 		cls.name = cls.display_name.lower().replace(' ', '-')
 		cls.design_types[cls.name] = cls
 		cls.design_type_codes[cls.type_code] = cls
+		with contextlib.suppress(AttributeError):
+			cls.categories[cls.category].append(cls)
 
 		if not hasattr(cls, 'internal_layers'):
 			cls.internal_layers = [Layer(str(i), l.size) for i, l in enumerate(cls.external_layers)]
@@ -124,7 +140,13 @@ class Design:
 			if type is None:
 				raise TypeError('Design expected 1 positional argument, 0 were passed')
 
-			subcls = (cls.design_type_codes if isinstance(type, int) else cls.design_types)[type]
+			try:
+				subcls = (cls.design_type_codes if isinstance(type, int) else cls.design_types)[type]
+			except KeyError:
+				if isinstance(type, int):
+					raise ValueError('invalid design type code')
+				raise ValueError('invalid design type name')
+
 			if not kwargs:
 				return subcls
 			return subcls(**kwargs)
@@ -298,6 +320,7 @@ class StandardBodyMixin:
 class TankTop(StandardBodyMixin, Design):
 	type_code = 102
 	display_name = 'Tank top'
+	category = 'Tops'
 	external_layers = STANDARD_BODY_LAYERS
 
 	def net_image(self):
@@ -319,6 +342,7 @@ class ShortSleeveMixin:
 class ShortSleeveTee(ShortSleeveMixin, StandardBodyMixin, Design):
 	type_code = 101
 	display_name = 'Short-sleeve tee'
+	category = 'Tops'
 	external_layers = STANDARD_BODY_LAYERS + SHORT_SLEEVE_LAYERS
 	internal_layers = Layer * 4
 	correspondence = STANDARD_BODY_CORRESPONDENCE + SHORT_SLEEVE_CORRESPONDENCE
@@ -344,6 +368,7 @@ class LongSleeveMixin:
 class LongSleeveDressShirt(LongSleeveMixin, StandardBodyMixin, Design):
 	type_code = 100
 	display_name = 'Long-sleeve dress shirt'
+	category = 'Tops'
 	external_layers = STANDARD_BODY_LAYERS + LONG_SLEEVE_LAYERS
 	internal_layers = Layer * 4
 	correspondence = STANDARD_BODY_CORRESPONDENCE + LONG_SLEEVE_CORRESPONDENCE
@@ -374,6 +399,7 @@ class LongBodyMixin:
 class SleevelessDress(LongBodyMixin, Design):
 	type_code = 107
 	display_name = 'Sleeveless dress'
+	category = 'Dress-up'
 	external_layers = LONG_BODY_LAYERS
 	internal_layers = Layer * 4
 	correspondence = LONG_BODY_CORRESPONDENCE
@@ -385,6 +411,7 @@ class SleevelessDress(LongBodyMixin, Design):
 
 class Coat(LongSleeveMixin, LongBodyMixin, Design):
 	type_code = 105
+	category = 'Tops'
 	external_layers = LONG_BODY_LAYERS + LONG_SLEEVE_LAYERS
 	correspondence = LONG_BODY_CORRESPONDENCE + LONG_SLEEVE_CORRESPONDENCE
 
@@ -396,6 +423,7 @@ class Coat(LongSleeveMixin, LongBodyMixin, Design):
 class ShortSleeveDress(ShortSleeveMixin, LongBodyMixin, Design):
 	type_code = 106
 	display_name = 'Short-sleeve dress'
+	category = 'Dress-up'
 	external_layers = LONG_BODY_LAYERS + SHORT_SLEEVE_LAYERS
 	internal_layers = Layer * 4
 	correspondence = LONG_BODY_CORRESPONDENCE + SHORT_SLEEVE_CORRESPONDENCE
@@ -403,6 +431,7 @@ class ShortSleeveDress(ShortSleeveMixin, LongBodyMixin, Design):
 class LongSleeveDress(Coat):
 	type_code = 108
 	display_name = 'Long-sleeve dress'
+	category = 'Dress-up'
 
 class RoundDress(ShortSleeveDress):
 	type_code = 110
@@ -414,6 +443,7 @@ class BalloonHemDress(ShortSleeveDress):
 
 class Robe(LongBodyMixin, Design):
 	type_code = 111
+	category = 'Dress-up'
 	external_layers = LONG_BODY_LAYERS + WIDE_SLEEVE_LAYERS
 	internal_layers = Layer * 4
 	correspondence = LONG_BODY_CORRESPONDENCE + WIDE_SLEEVE_CORRESPONDENCE
@@ -432,6 +462,7 @@ class Robe(LongBodyMixin, Design):
 class BrimmedCap(Design):
 	type_code = 112
 	display_name = 'Brimmed cap'
+	category = 'Headwear'
 	external_layers = [
 		Layer('front', (44, 41)),
 		Layer('back', (20, 44)),
@@ -466,6 +497,7 @@ class BrimmedCap(Design):
 class KnitCap(Design):
 	type_code = 113
 	display_name = 'Knit cap'
+	category = 'Headwear'
 	external_layers = [Layer('cap', (64, 53))]
 	internal_layers = [
 		Layer('0', STANDARD),
@@ -492,6 +524,7 @@ class KnitCap(Design):
 class BrimmedHat(Design):
 	type_code = 114
 	display_name = 'Brimmed hat'
+	category = 'Headwear'
 	external_layers = [
 		Layer('top', (36, 36)),
 		Layer('middle', (64, 19)),
@@ -645,15 +678,13 @@ def encode_image_data(pxss: List[bytes]) -> dict:
 
 	img_data = {}
 	palette = img_data['mPalette'] = {str(i): color for color, i in palette.items()}
-	# implicit transparent
-	palette[str(PALETTE_SIZE)] = 0
 
 	img_data['mData'] = layers
 	img_data.update(DUMMY_EXTRA_METADATA)
 
 	return img_data
 
-def gen_palette(pxss: List[bytes]) -> Dict[int, int]:
+def gen_palette(pxss: List[bytes], *, pro=False) -> Dict[int, int]:
 	palette = {}
 	color_i = 0
 	for pxs in pxss:
@@ -663,7 +694,14 @@ def gen_palette(pxss: List[bytes]) -> Dict[int, int]:
 				palette[color] = color_i
 				color_i += 1
 
-	if len(palette) > PALETTE_SIZE:
+	if pro:
+		palette_max = PALETTE_SIZE
+	else:
+		palette_max = PALETTE_SIZE + 1
+		# implicit transparent
+		palette[0] = PALETTE_SIZE
+
+	if len(palette) > palette_max:
 		raise InvalidPaletteError
 
 	return palette

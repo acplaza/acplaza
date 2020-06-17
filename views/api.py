@@ -192,7 +192,6 @@ class InvalidImageIdError(ImageError, InvalidFormatError):
 ISLAND_NAMES = [
 	'The Cloud',
 	'Black Lives Matter',
-	'Trans Rights!',
 	'ACAB',
 ]
 
@@ -202,14 +201,14 @@ island_name = partial(random.choice, ISLAND_NAMES)
 @limiter.limit('1 per 15s')
 def create_image():
 	try:
-		image_name = request.args['image_name']
+		image_name = request.values['image_name']
 	except KeyError:
 		raise InvalidImageArgument('image_name')
 
-	author_name = request.args.get('author_name', 'Anonymous')  # we are legion
+	author_name = request.values.get('author_name', 'Anonymous')  # we are legion
 
 	try:
-		design_type_name = request.args['design_type']
+		design_type_name = request.values['design_type']
 	except KeyError:
 		return create_basic_image(image_name, author_name)
 	else:
@@ -239,17 +238,28 @@ def create_pro_image(image_name, author_name, design_type_name):
 	return current_app.response_class(stream_with_context(gen()), mimetype='text/plain')
 
 def create_basic_image(image_name, author_name):
+	width = height = None
+
+	def get_int_value(name):
+		v = request.values.get(name)
+		if not v:
+			return None
+		try:
+			return int(v)
+		except ValueError:
+			raise InvalidImageArgument(name)
+
 	try:
-		resize = tuple(map(int, request.args['resize'].split('x')))
+		width, height = map(int, request.values['resize'].split('x'))
 	except KeyError:
-		pass
+		width, height = map(get_int_value, ('resize-width', 'resize-height'))
 	except ValueError:
 		raise InvalidImageArgument('resize')
 	else:
 		if len(resize) != 2:
 			raise InvalidImageArgument('resize')
 
-	scale = 'scale' in request.args
+	scale = 'scale' in request.values or request.values.get('mode') == 'scale'
 
 	try:
 		img = wand.image.Image(file=request.files['0'])
@@ -258,8 +268,8 @@ def create_basic_image(image_name, author_name):
 	except KeyError:
 		raise MissingLayerError(BasicDesign.external_layers[0])
 
-	if resize is not None and not scale:
-		img.transform(resize=f'{resize[0]}x{resize[1]}')
+	if width is not None and not scale:
+		img.transform(resize=f'{width}x{height}')
 	# do this again now because custom exception handlers don't run for generators ¯\_(ツ)_/¯
 	designs_db.TiledImageTooBigError.validate(img)
 

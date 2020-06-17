@@ -145,19 +145,22 @@ def create_basic_design(design, *, scale: bool):
 		deletion_token,
 	)
 	yield image_id
-	for i, image in zip(reversed(range(1, len(images) + 1)), images):
+	for i, image in zip(reversed(range(1, len(images) + 1)), reversed(images)):
+		design_name = f'{design.design_name} {i}' if len(images) > 1 else design.design_name
 		sub_design = encode.BasicDesign(
-			design_name=design.design_name,
+			design_name=design_name,
 			island_name=design.island_name,
 			author_name=design.author_name,
 			layers={'0': image},
 		)
-		design_name = f'{design.design_name} {i}' if len(images) > 1 else design.design_name
 		# we do this on each loop in case someone uploaded a few more designs in between iterations
 		garbage_collect_designs(len(images) - (i - 1), pro=False)
 		# designs get out of order if we post them too fast
 		time.sleep(0.5)
 		was_quantized, encoded = encode.encode(sub_design)
+		with open('fuckme', 'wb') as f:
+			import msgpack
+			msgpack.dump(encoded, f)
 		design_id = api.create_design(encoded)
 		create_design(image_id=image_id, design_id=design_id, position=i, pro=False)
 		yield was_quantized, design_id

@@ -19,6 +19,7 @@ def init_app(app):
 	app.add_template_global(designs_api.InvalidDesignCodeError.regex.pattern, name='design_code_regex')
 	app.add_template_global(designs_api.InvalidAuthorIdError.regex.pattern, name='author_id_regex')
 	app.add_template_global(dodo.InvalidDodoCodeError.regex.pattern, name='dodo_code_regex')
+	app.add_template_global(designs_encode.Design.categories, name='design_categories')
 
 bp = Blueprint('frontend', __name__)
 
@@ -152,9 +153,29 @@ def designs(author_id, *, pro):
 		design_type='Pro' if pro else 'basic',
 	)
 
+@bp.route('/create-design')
+def pick_design_type_form():
+	return render_template('pick_design_type.html')
+
+@bp.route('/create-design/basic-design')
+def create_basic_design_form():
+	return render_template('create_basic_design_form.html')
+
+bp.route('/create-design/basic-design', methods=['POST'])(api.create_image)
+
+@bp.route('/create-design/<design_type_name>')
+def create_pro_design_form(design_type_name):
+	try:
+		cls = designs_encode.Design(design_type_name)
+	except KeyError:
+		return redirect('/create-design')
+
+	return render_template('create_design_form.html', cls=cls)
+
 @bp.errorhandler(ACNHError)
 def handle_acnh_exception(ex):
-	return render_template('error.html', message=ex.message), ex.http_status
+	d = ex.to_dict()
+	return render_template('error.html', message=d['error']), ex.http_status
 
 @bp.errorhandler(utils.IncorrectAuthorizationError)
 def handle_not_logged_in(ex):

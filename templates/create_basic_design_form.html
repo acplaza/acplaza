@@ -1,0 +1,79 @@
+{% extends 'base.html' %}
+{% block title %}Create a design{% endblock %}
+{% block content %}
+	<style>
+		#resize-group {
+			display: none;
+		}
+		.required::before {
+			color: red;
+			content: '* ';
+		}
+	#resize-group {
+		display: none;
+	}
+	.required::before {
+		color: red;
+		content: '* ';
+	}
+	form {
+		display: flex;
+		flex-direction: column;
+		width: 35vw;
+	}
+	.form-row {
+		display: flex;
+		flex-direction: row;
+		margin: 0.2em 0;
+	}
+	.form-row > label {
+		width: 20vw;
+	}
+	.form-row > input {
+		margin-left: auto;
+		width: 15vw;
+	}
+	</style>
+	<form method=post enctype="multipart/form-data">
+		<input type=hidden name=csrf_token value="{{ csrf_token() }}">
+		<input type=hidden name=design_type value="basic-design">
+	<div class=form-row>
+		<label class=required for=file>Pick an image</label>
+		<input type=file id=file name=0 required>
+	</div>
+	<div class=form-row>
+		<label class=required for=image_name>Name</label>
+		<input type=text name=image_name id=image_name maxlength=20 required>
+	</div>
+	<div class=form-row>
+		<label for=author_name>Author name</label>
+		<input type=text name=author_name id=author_name maxlength=20 placeholder="Anonymous">
+	</div>
+	<p class=required>Would you like to create one design or split it up and tile it?</p>
+	<div>
+		<input type=radio id=scale name=mode value=scale checked required>
+		<label for=scale>Scale</label>
+	</div>
+	<div>
+		<input type=radio id=tile name=mode value=tile required>
+		<label for=tile>Tile</label>
+	</div>
+	<div id="resize-group" style="display: none">
+		Resize<br>
+		{% from 'utils.html' import numeric_input_attrs %}
+		<input {{ numeric_input_attrs }} name=resize-width placeholder="Width"><!--
+		-->×<input {{ numeric_input_attrs }} name=resize-height placeholder="Height">
+	</div>
+	<div class=form-row><input type=submit value="Upload"></div>
+	</form>
+	<script>
+		let scaleRadio = document.querySelector('#scale');
+		let tileRadio = document.querySelector('#tile');
+		let resizeGroup = document.querySelector('#resize-group');
+		const scale = () => { resizeGroup.style.display = 'none'; };
+		const tile = () => { resizeGroup.style.display = 'block'; };
+		scaleRadio.addEventListener('click', scale);
+		tileRadio.addEventListener('click', tile);
+		document.addEventListener('DOMContentLoaded', () => (scaleRadio.checked ? scale : tile)());
+	</script>
+{% endblock %}
