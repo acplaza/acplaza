@@ -39,4 +39,4 @@ ticket-path = "/path/to/acnh-base.tik"
 [postgres-db]
 # keys are documented here: https://magicstack.github.io/asyncpg/current/api/index.html#asyncpg.connection.connect
 # you'll probably want to configure at least "database", but all are optional
-database = "acnh_api"
+database = "acplaza"
