@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
-{% block title %}{{ image.image_name }}{% endblock %}
+{% block title %}{{ image.image_name }}{{ image.author_name if image.author_name != 'Anonymous' }}{% endblock %}
 {% block content %}
-	<p>Author: {{ image.author_name }}</p>
+	<p>{{ design_type }}</p>
 	{% if session.user_id == image.author_id %}
 		<nav>
 			<form method=post action="/image/{{ image.image_id }}/delete">
@@ -9,6 +9,9 @@
 				<input type=submit value="Delete this design">
 			</form>
 		</nav>
+	{% endif %}
+	{% if preview %}
+		<img src="{{ preview }}"><br>
 	{% endif %}
 	{% for name, url in layers %}
 		<img alt="{{ name }}" title="{{ name }}" src="{{ url }}">

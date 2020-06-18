@@ -216,18 +216,18 @@ def image(image_id):
 		layers = {}
 		for layer_def, blob in zip(cls.external_layers, image['layers']):
 			layers[layer_def.name] = img = layer_def.as_wand()
-			layer_def.import_pixels(data=blob, channel_map='RGBA')
+			img.import_pixels(data=blob, channel_map='RGBA')
 
 		design = cls(layers=layers, **cls_kwargs)
 
-		layers = (
+		layers = [
 			(
 				name.capitalize().replace('-', ' '),
 				utils.image_to_base64_url(utils.xbrz_scale_wand_in_subprocess(image, 6))
 			)
 			for name, image
-			in layers.items()
-		)
+			in design.layer_images.items()
+		]
 	else:
 		img = wand.image.Image(width=image['width'], height=image['height'])
 		img.import_pixels(data=image['layers'][0], channel_map='RGBA')
@@ -239,6 +239,8 @@ def image(image_id):
 	return render_template(
 		'image.html',
 		image=image, design=design, layers=layers, designs=designs, required_design_count=required_design_count,
+		design_type=cls.display_name,
+		preview=utils.image_to_base64_url(design.net_image()) if image['pro'] else None,
 	)
 
 @bp.route('/refresh-image/<image_id>')
