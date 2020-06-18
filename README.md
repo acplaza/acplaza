@@ -1,7 +1,8 @@
-# ACNH API
+# Plaza
 
-This is a REST API for programmatic access to Dodo Codes and Custom Designs. My instance is available at:
-- https://acnh-api.ashitty.website
+This is a REST API and web frontend for programmatic access to Dodo Codes and Custom Designs.
+My instance is available at:
+- https://acplaza.app
 - http://acnhok4pb2e6jwy2khjollqznnkrqxpt5toaknjrqdfeqir3iqhyl6ad.onion/
 
 This API requires paid authorization.
