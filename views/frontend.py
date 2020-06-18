@@ -246,17 +246,14 @@ def image(image_id):
 # no rate limit because this endpoint has no effect if it doesn't need to run
 def refresh_image(image_id):
 	image_id = int(api.InvalidImageIdError.validate(image_id))
-	for _ in designs_db.refresh_image(image_id):
-		pass
-
-	flash('Image refreshed successfully.', 'success')
-	return redirect(f'/image/{image_id}')
+	results = stream_with_context(format_created_designs_gen(designs_db.refresh_image(image_id)))
+	return render_template('created_image.html', image_id=image_id, results=results, verb='refreshed')
 
 @bp.route('/image/<image_id>/delete', methods=['POST'])
 def delete_image(image_id):
 	image_id = int(api.InvalidImageIdError.validate(image_id))
 	designs_db.delete_image(image_id)
-	flash('Image deleted successfully.', 'success')
+	flash('Design deleted successfully.', 'success')
 	return redirect('/')
 
 @bp.errorhandler(ACNHError)
