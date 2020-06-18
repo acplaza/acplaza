@@ -16,9 +16,11 @@
 		</main>
 		<footer>
 			{% block footer %}
-				<nav>
-					<a href="https://github.com/acplaza/acplaza">Source code and API documentation</a>
-				</nav>
+				<nav><ul>
+					{% block footer_nav %}
+						<li><a href="https://github.com/acplaza/acplaza">Source code and API documentation</a>
+					{% endblock %}
+				</ul></nav>
 			{% endblock %}
 		</footer>
 	</div>

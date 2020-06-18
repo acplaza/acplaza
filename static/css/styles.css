@@ -1,3 +1,6 @@
+nav ul {
+	list-style: none;
+}
 .row {
 	align-items: baseline;
 	margin-left: unset;

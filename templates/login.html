@@ -1,11 +1,14 @@
 {% extends 'base.html' %}
 {% block title %}Login{% endblock %}
 {% block content %}
-{% include 'flashes.html' %}
 	<p>Enter your token</p>
 	<form method=POST>
 		<input type=hidden name=csrf_token value="{{ csrf_token() }}">
 		<input name=token type=password>
 		<input type=submit value="Login">
 	</form>
+{% endblock %}
+{% block footer_nav %}
+	{{ super() }}
+	<li><a href="https://www.patreon.com/iomintz">Become a patron to get access</a>
 {% endblock %}
