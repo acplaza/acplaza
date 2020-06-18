@@ -3,14 +3,20 @@
 {% block content %}
 	<p>Please upload an image for each part of the design. All images must use the same 15 color palette.</p>
 	<form method=POST enctype="multipart/form-data">
-		<input type=hidden name=csrf_token value="{{ csrf_token() }}">
-		<input type=hidden name=design_type value="{{ cls.name }}">
-		{% for layer in cls.external_layers %}
-			<div><label>
-				{{ layer.display_name }} ({{ layer.width }}×{{ layer.height }})
-				<input type=file name="{{ layer.name }}">
-			</label></div>
-		{% endfor %}
-		<input type=submit value="Upload">
+		<fieldset>
+			<input type=hidden name=csrf_token value="{{ csrf_token() }}">
+			<input type=hidden name=design_type value="{{ cls.name }}">
+			<label class=required for=image_name>Name</label>
+			<input type=text name=image_name id=image_name maxlength=20 required>
+			<label for=author_name>Author name</label>
+			<input type=text name=author_name id=author_name maxlength=20 placeholder="Anonymous">
+			{% for layer in cls.external_layers %}
+				<div><label>
+					{{ layer.display_name }} ({{ layer.width }}×{{ layer.height }})
+					<input type=file name="{{ layer.name }}">
+				</label></div>
+			{% endfor %}
+			<input type=submit value="Upload">
+		</fieldset>
 	</form>
 {% endblock %}
