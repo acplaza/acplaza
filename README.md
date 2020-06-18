@@ -106,7 +106,7 @@ curl \
 	-F top=@top.png \
 	-F middle=@middle.png \
 	-F bottom=@bottom.png \
-	'https://acnh-api.ashitty.website/images?design_type=brimmed-hat&image_name=My%20Brimmed%20Hat&author_name=iomintz'
+	'https://acplaza.app/images?design_type=brimmed-hat&image_name=My%20Brimmed%20Hat&author_name=iomintz'
 ```
 
 - basic-design: a single 32×32 layer, called `0`. The singular non-Pro design type.
