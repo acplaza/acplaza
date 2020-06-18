@@ -194,7 +194,6 @@ def refresh_image(image_id):
 	design_positions = {row['position'] for row in rows}
 	required_positions = set(range(1, required_design_count + 1))
 	missing_positions = required_positions - design_positions
-	print(missing_positions)
 	cls = encode.Design(image_info['type_code'])
 	if image_info['pro']:
 		# TODO deduplicate this from views/frontend.py
@@ -214,7 +213,6 @@ def refresh_image(image_id):
 		design = encode.BasicDesign(layers={'0': img}, design_name=image_info['image_name'], island_name=island_name())
 		images = get_images(img, scale=image_info['mode'] == 'scale')
 		to_create = [(i, img) for i, img in enumerate(images, 1) if i in missing_positions]
-		print(to_create)
 		yield from create_designs(image_id, design, to_create, tile=image_info['mode'] == 'tile')
 
 def create_design(*, image_id, design_id, position, pro):
