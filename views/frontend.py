@@ -186,13 +186,13 @@ def create_basic_design_form():
 def create_image(_):
 	gen = stream_with_context(api._create_image())
 	image_id = next(gen)
-	def pretty_gen():
-		for was_quantized, design_id in gen:
-			yield was_quantized, designs_api.design_code(design_id)
+	return current_app.response_class(utils.stream_template(
+		'created_image.html', image_id=image_id, results=format_created_designs_gen(gen), verb='created',
+	))
 
-	return current_app.response_class(
-		utils.stream_template('created_image.html', image_id=image_id, results=pretty_gen())
-	)
+def format_created_designs_gen(gen):
+	for was_quantized, design_id in gen:
+		yield was_quantized, designs_api.design_code(design_id)
 
 @bp.route('/create-design/<design_type_name>')
 def create_pro_design_form(design_type_name):

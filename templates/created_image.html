@@ -1,11 +1,12 @@
 {% extends 'base.html' %}
 {% block title %}Results{% endblock %}
 {% block content %}
-	<a href="/image/{{ image_id }}">View your new design</a>
 	<h2>Design codes</h2>
 	<ul>
 		{% for was_quantized, design_code in results %}
 			<li>{% if was_quantized %}<span class="emoji" title="This section of the image had to be quantized to fit the game's 16 color limit.">⚠️</span>{% endif %} <a href="/design/{{ design_code }}">MA-{{ design_code }}</a>
 		{% endfor %}
 	</ul>
+	<h2>Done</h2>
+	<p><a href="/image/{{ image_id }}">View your {{ verb }} design</a></p>
 {% endblock %}
