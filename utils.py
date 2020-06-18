@@ -203,4 +203,4 @@ def stream_template(template_name, **context):
 	t = current_app.jinja_env.get_template(template_name)
 	rv = t.stream(context)
 	rv.disable_buffering()
-	return rv
+	return current_app.response_class(rv)

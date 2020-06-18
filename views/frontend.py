@@ -186,9 +186,9 @@ def create_basic_design_form():
 def create_image(_):
 	gen = stream_with_context(api._create_image())
 	image_id = next(gen)
-	return current_app.response_class(utils.stream_template(
+	return utils.stream_template(
 		'created_image.html', image_id=image_id, results=format_created_designs_gen(gen), verb='created',
-	))
+	)
 
 def format_created_designs_gen(gen):
 	for was_quantized, design_id in gen:
@@ -247,7 +247,7 @@ def image(image_id):
 def refresh_image(image_id):
 	image_id = int(api.InvalidImageIdError.validate(image_id))
 	results = stream_with_context(format_created_designs_gen(designs_db.refresh_image(image_id)))
-	return render_template('created_image.html', image_id=image_id, results=results, verb='refreshed')
+	return utils.stream_template('created_image.html', image_id=image_id, results=results, verb='refreshed')
 
 @bp.route('/image/<image_id>/delete', methods=['POST'])
 def delete_image(image_id):
