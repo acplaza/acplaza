@@ -54,6 +54,45 @@ one or more in-game designs.
   A wide variety of image formats may be used (anything that ImageMagick supports).
   The response for this endpoint is streamed as text/plain. The first line of the stream is the resulting image ID.
   Each subsequent line is formatted like `was_quantized,design_code`. For example: `0,5RJJ-TXK3-JWXV`.
+- GET /image/:image-id
+  Returns a JSON object with two keys: `image` and `design`. For example:
+
+```json
+{
+	"image": {
+		"image_id": 9,
+		"author_name": "Anonymous",
+		"image_name": "Droon Fox",
+		"created_at": "2020-06-18T02:08:19.468474+00:00",
+		"width": 128,
+		"height": 128,
+		"mode": "tile",
+		"layers": [
+			"base64 encoded image",
+			"base64 encoded image2",
+			"etc"
+		],
+		"pro": false,
+		"design_type": "basic-design"
+	},
+	"designs": [
+		{
+			"design_id": 337936614208352244,
+			"design_code": "M28X-QT1R-HM4S",
+			"position": 2
+		},
+		{
+			"design_id": 338686262569391946,
+			"design_code": "M3K1-B98K-86L6",
+			"position": 3
+		}
+	]
+}
+```
+
+- POST /image/:image-id/refresh
+  If some of the designs for an image were deleted to save space, this endpoint will re-create them, and
+  return their design codes in the same format as POST /images will, but without the initial header line.
 
 ### Valid Design Types
 

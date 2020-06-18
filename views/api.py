@@ -293,7 +293,11 @@ def format_created_design_results(gen, *, header=True):
 
 @bp.route('/image/<image_id>')
 def image(image_id):
-	return designs_db.image(int(InvalidImageIdError.validate(image_id)))
+	rv = designs_db.image(int(InvalidImageIdError.validate(image_id)))
+	# images are meant to be anonymous, with the author identified solely by their chosen name
+	del rv['image']['author_id']
+	rv['image']['design_type'] = Design(rv['image'].pop('type_code')).name
+	return rv
 
 @bp.route('/image/<image_id>.tar')
 @limiter.limit('2 per 10 seconds')
