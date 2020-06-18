@@ -69,24 +69,22 @@ curl \
 	'https://acnh-api.ashitty.website/images?design_type=brimmed-hat&image_name=My%20Brimmed%20Hat&author_name=iomintz'
 ```
 
-**TODO finish documenting these**
-
 - basic-design: a single 32×32 layer, called `0`. The singular non-Pro design type.
-- tank-top: 2 layers: `front` and `back`.
-- short-sleeve-tee
-- long-sleeve-dress-shirt
-- sweater
-- hoodie
-- coat
-- sleeveless-dress
-- short-sleeve-dress
-- long-sleeve-dress
-- round-dress
-- balloon-hem-dress
-- robe
-- brimmed-cap
-- knit-cap
-- brimmed-hat
+- tank-top: 2 layers: `front` and `back`. Both 32×32.
+- short-sleeve-tee: same as tank-top with two additional layers, `right-sleeve` and `left-sleeve`, both 22×13.
+- long-sleeve-dress-shirt: same as tank-top with two additional layers: `right-sleeve` and `left-sleeve`, both 22×22.
+- sweater: same as long-sleeve-dress-shirt.
+- hoodie: same as long-sleeve-dress-shirt.
+- coat: four layers: `back`, `front`, `right-sleeve`, and `left-sleeve`. Back / front are 32×41. Sleeves are 22×22.
+- sleeveless-dress: two layers: `back`, and `front`, both 32×41.
+- short-sleeve-dress: same as sleeveless-dress, with two additional layers: `right-sleeve` and `left-sleeve`, both 22×13.
+- long-sleeve-dress: same as coat.
+- round-dress: same as short-sleeve-dress.
+- balloon-hem-dress: same as short-sleeve-dress.
+- robe: same as sleeveless-dress, with two additional layers: `right-sleeve` and `left-sleeve`, both 30×22.
+- brimmed-cap: three layers: `front` (44×41), `back` (20×44), and `brim` (44×21).
+- knit-cap: one layer: `cap` (64×53)
+- brimmed-hat: three layers: `top` (36×36), `middle` (64×19), and `bottom` (64×9)
 
 ## Setup
 
