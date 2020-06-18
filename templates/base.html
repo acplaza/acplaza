@@ -8,10 +8,19 @@
 </head>
 <body>
 	<div class=container>
-		<h1>{{ self.title() }}</h1>
-		{% include 'flashes.html' %}
-		{% block content %}
-		{% endblock %}
+		<main>
+			<h1>{{ self.title() }}</h1>
+			{% include 'flashes.html' %}
+			{% block content %}
+			{% endblock %}
+		</main>
+		<footer>
+			{% block footer %}
+				<nav>
+					<a href="https://github.com/acplaza/acplaza">Source code and API documentation</a>
+				</nav>
+			{% endblock %}
+		</footer>
 	</div>
 </body>
 </html>
