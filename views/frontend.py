@@ -99,6 +99,7 @@ def designs_form():
 
 bp.route('/design/<design_code>/<layer>.png')(api.design_layer)
 bp.route('/design/<design_code>.tar')(api.design_archive)
+bp.route('/image/<image_id>.tar')(api.image_archive)
 
 @bp.route('/design/<design_code>')
 @limiter.limit('2 per 10 seconds')

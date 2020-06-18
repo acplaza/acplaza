@@ -74,28 +74,12 @@ def design_archive(design_code):
 	design_name = meta['mMtDNm']  # hungarian notation + camel case + abbreviations DO NOT mix well
 
 	def gen():
-		tar = tarfile_stream.open(mode='w|')
-		yield from tar.header()
-
 		if type_code == BasicDesign.type_code or render_internal:
 			layers = designs_render.render_layers(body)
 		else:
 			layers = Design.from_data(data).layer_images.items()
 
-		for name, image in layers:
-			tarinfo = tarfile_stream.TarInfo(f'{design_name}/{name}.png')
-			tarinfo.mtime = data['updated_at']
-
-			image = maybe_scale(image)
-			out = io.BytesIO()
-			with image.convert('png') as c:
-				c.save(file=out)
-			tarinfo.size = out.tell()
-			out.seek(0)
-
-			yield from tar.addfile(tarinfo, out)
-
-		yield from tar.footer()
+		yield from make_tar(design_name, data['updated_at'], layers)
 
 	encoded_filename = urllib.parse.quote(design_name + '.tar')
 	return current_app.response_class(
@@ -103,6 +87,25 @@ def design_archive(design_code):
 		mimetype='application/x-tar',
 		headers={'Content-Disposition': f"attachment; filename*=utf-8''{encoded_filename}"},
 	)
+
+def make_tar(design_name, updated_at, layers):
+	tar = tarfile_stream.open(mode='w|')
+	yield from tar.header()
+
+	for name, image in layers:
+		tarinfo = tarfile_stream.TarInfo(f'{design_name}/{name}.png')
+		tarinfo.mtime = updated_at
+
+		image = maybe_scale(image)
+		out = io.BytesIO()
+		with image.convert('png') as c:
+			c.save(file=out)
+		tarinfo.size = out.tell()
+		out.seek(0)
+
+		yield from tar.addfile(tarinfo, out)
+
+	yield from tar.footer()
 
 # no rate limit as we need to render the thumbnails for all of an author's designs quickly
 @bp.route('/design/<design_code>/<layer>.png')
@@ -291,6 +294,38 @@ def format_created_design_results(gen, *, header=True):
 @bp.route('/image/<image_id>')
 def image(image_id):
 	return designs_db.image(int(InvalidImageIdError.validate(image_id)))
+
+@bp.route('/image/<image_id>.tar')
+@limiter.limit('2 per 10 seconds')
+def image_archive(image_id):
+	image_id = int(InvalidImageIdError.validate(image_id))
+	image_info = designs_db.image(image_id)['image']
+	render_internal = 'internal_layers' in request.args
+	layers = {}
+	cls = Design(image_info['type_code'])
+	for layer, image_blob in zip(cls.external_layers, image_info['layers']):
+		if image_info['pro']:
+			layers[layer.name] = img = layer.as_wand()
+		else:
+			layers[layer.name] = img = wand.image.Image(width=image_info['width'], height=image_info['height'])
+
+		img.import_pixels(channel_map='RGBA', data=image_blob)
+
+	design = cls(layers=layers)
+	if render_internal:
+		requested_layers = enumerate(design.internalize())
+	else:
+		requested_layers = layers.items()
+
+	gen = make_tar(image_info['image_name'], image_info['created_at'].timestamp(), requested_layers)
+	encoded_filename = urllib.parse.quote(image_info['image_name'] + '.tar')
+	return current_app.response_class(
+		stream_with_context(gen),
+		mimetype='application/x-tar',
+		headers={
+			'Content-Disposition': f"attachment; filename*=utf-8''{encoded_filename}",
+		},
+	)
 
 @bp.route('/image/<image_id>/refresh', methods=['POST'])
 def refresh_image(image_id):
