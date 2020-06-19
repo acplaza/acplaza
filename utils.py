@@ -20,7 +20,7 @@ import wand.image
 import toml
 import asyncpg
 import syncpg
-from flask import current_app, g, request, session
+from flask import current_app, g, request, session, url_for
 from flask_wtf.csrf import CSRFProtect
 from flask_limiter import Limiter
 
@@ -213,7 +213,11 @@ def stream_template(template_name, **context):
 def is_safe_url(target, *, _allowed_schemes=frozenset({'http', 'https'})):
 	ref_url = urllib.parse.urlparse(request.host_url)
 	test_url = urllib.parse.urlparse(urllib.parse.urljoin(request.host_url, target))
-	return test_url.scheme in _allowed_schemes and ref_url.netloc == test_url.netloc
+	return (
+		test_url.scheme in _allowed_schemes
+		and ref_url.netloc == test_url.netloc
+		and test_url.path != url_for('.login')
+	)
 
 def get_redirect_target():
 	for target in request.values.get('next'), request.referrer:

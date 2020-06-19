@@ -45,6 +45,8 @@ def about():
 @bp.route('/login')
 @utils.token_exempt
 def login_form():
+	if session.get('user_id'):
+		return redirect('/')
 	return render_template('login.html')
 
 @bp.route('/login', methods=['POST'])
