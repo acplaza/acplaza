@@ -2,11 +2,11 @@
 {% block title %}Welcome{% endblock %}
 {% block content %}
 	<a class="button button-outline" href="/logout">Log out</a>
+	<h2><a href="/create-design">Create a design</a></h2>
 	<h2>View a design</h2>
 	{% include 'fragments/design_form.html' %}
 	<h2>View a creator's designs</h2>
 	{% include 'fragments/designs_form.html' %}
-	<h2><a href="/create-design">Create a design</a></h2>
 	<h2>View an active island hosting session</h2>
 	{% include 'fragments/host_session_form.html' %}
 {% endblock %}
