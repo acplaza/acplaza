@@ -58,6 +58,11 @@ def login():
 		return 'auth failed', HTTPStatus.UNAUTHORIZED
 
 	session['user_id'] = user_id
+
+	target = utils.get_redirect_target()
+	if target:
+		return redirect(target)
+
 	return redirect('/')
 
 @bp.route('/logout')
@@ -67,7 +72,10 @@ def logout():
 	return redirect('/')
 
 @bp.route('/')
+@utils.token_exempt
 def index():
+	if not session.get('user_id'):
+		return redirect(url_for('.login'))
 	return render_template('index.html')
 
 @bp.route('/host-session/')
@@ -270,4 +278,4 @@ def handle_http_exception(ex):
 
 @bp.errorhandler(utils.IncorrectAuthorizationError)
 def handle_not_logged_in(ex):
-	return redirect(url_for('.login'))
+	return redirect(url_for('.login', next=ex.path))

@@ -11,6 +11,7 @@ import secrets
 import subprocess
 import os
 import sys
+import urllib.parse
 from http import HTTPStatus
 
 import flask.json
@@ -87,6 +88,10 @@ class IncorrectAuthorizationError(AuthorizationError):
 	message = 'invalid or incorrect Authorization header'
 	http_status = HTTPStatus.UNAUTHORIZED
 
+	def __init__(self, path=None):
+		self.path = path
+		super().__init__()
+
 token_exempt_views = set()
 
 def token_exempt(view):
@@ -112,7 +117,7 @@ def process_authorization():
 
 	token = request.headers.get('Authorization')
 	if not token:
-		raise IncorrectAuthorizationError
+		raise IncorrectAuthorizationError(request.full_path.rstrip('?'))
 
 	user_id, secret = validate_token(token)
 	if not user_id:
@@ -204,3 +209,15 @@ def stream_template(template_name, **context):
 	rv = t.stream(context)
 	rv.disable_buffering()
 	return current_app.response_class(rv)
+
+def is_safe_url(target, *, _allowed_schemes=frozenset({'http', 'https'})):
+	ref_url = urllib.parse.urlparse(request.host_url)
+	test_url = urllib.parse.urlparse(urllib.parse.urljoin(request.host_url, target))
+	return test_url.scheme in _allowed_schemes and ref_url.netloc == test_url.netloc
+
+def get_redirect_target():
+	for target in request.values.get('next'), request.referrer:
+		if not target:
+			continue
+		if is_safe_url(target):
+			return target
