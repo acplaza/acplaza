@@ -1,0 +1,7 @@
+{% extends 'base.html' %}
+{% block footer_nav %}
+	{{ super() }}
+	{% if not session.get('user_id') %}
+		<li><a href="https://www.patreon.com/iomintz">Become a patron to get access</a>
+	{% endif %}
+{% endblock %}

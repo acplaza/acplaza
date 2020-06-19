@@ -1,4 +1,4 @@
-{% extends 'base.html' %}
+{% extends 'base_patron.html' %}
 {% block title %}Login{% endblock %}
 {% block content %}
 	<p>Enter your token</p>
@@ -7,8 +7,4 @@
 		<input name=token type=password>
 		<input type=submit value="Login">
 	</form>
-{% endblock %}
-{% block footer_nav %}
-	{{ super() }}
-	<li><a href="https://www.patreon.com/iomintz">Become a patron to get access</a>
 {% endblock %}

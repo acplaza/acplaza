@@ -37,6 +37,11 @@ def init_app(app):
 
 bp = Blueprint('frontend', __name__)
 
+@bp.route('/about')
+@utils.token_exempt
+def about():
+	return render_template('about.html')
+
 @bp.route('/login')
 @utils.token_exempt
 def login_form():
