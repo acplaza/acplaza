@@ -1,12 +1,21 @@
 {% extends 'base.html' %}
 {% block title %}{{ author_name }}'s {{ design_type }} designs{% endblock %}
 {% block content %}
+	<style>
+		iframe {
+			border: none;
+			overflow: hidden;
+			overflow-x: hidden;
+		}
+	</style>
+
 	<p>Creator ID: MO-{{ author_id }}</p>
 	<nav>
 		{% from 'utils.html' import other_designs_link %}
 		{{ other_designs_link(author_id, pro) }}
 	</nav>
-	{% for name, design_code, image_url in designs %}
-		<a alt="{{ name }}" title="{{ name }}" href="/design/{{ design_code }}"><img src="{{ image_url }}"></a>
+	<!-- defer loading the designs using iframes -->
+	{% for design_code in design_codes %}	
+		<iframe width=240 height=240 scrolling=no src="/preview-design/{{ design_code }}"></iframe>
 	{% endfor %}
 {% endblock %}

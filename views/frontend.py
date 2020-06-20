@@ -156,7 +156,7 @@ def pro_designs(author_id):
 def designs(author_id, *, pro):
 	author_id = int(designs_api.InvalidAuthorIdError.validate(author_id).replace('-', ''))
 	pretty_author_id = designs_api.add_hyphens(str(author_id))
-	data = designs_api.list_designs(author_id, pro=pro, with_binaries=True)
+	data = designs_api.list_designs(author_id, pro=pro)
 	if not data['total']:
 		return render_template(
 			'no_designs.html',
@@ -165,28 +165,26 @@ def designs(author_id, *, pro):
 
 	author_name = data['headers'][0]['design_player_name']
 
-	designs = []
-	for header in data['headers']:
-		# XXX unfortunately this page is made a lot slower due to requesting each design just for its
-		# design name. Our options aren't great though. We can either fetch each design on the client side,
-		# or we can omit the design name entirely.
-		data = msgpack.loads(acnh().request('GET', header['body']).content)
-		designs_api.merge_headers(data, header)
-		design_code = designs_api.design_code(header['id'])
-		net_image = designs_encode.Design.from_data(data).net_image()
-		designs.append((
-			data['mMeta']['mMtDNm'],
-			design_code,
-			utils.image_to_base64_url(net_image),
-		))
+	design_codes = [designs_api.design_code(hdr['id']) for hdr in data['headers']]
 
 	return render_template(
 		'designs.html',
 		author_id=pretty_author_id,
 		author_name=author_name,
 		pro=pro,
-		designs=designs,
+		design_codes=design_codes,
 		design_type='Pro' if pro else 'basic',
+	)
+
+@bp.route('/preview-design/<design_code>')
+def preview_design(design_code):
+	data = designs_api.download_design(design_code)
+	net_image = designs_encode.Design.from_data(data).net_image()
+	return render_template(
+		'design_preview.html',
+		design_name=data['mMeta']['mMtDNm'],
+		design_code=design_code,
+		url=utils.image_to_base64_url(net_image),
 	)
 
 @bp.route('/create-design')
