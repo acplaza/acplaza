@@ -125,13 +125,14 @@ def design(design_code):
 
 	design = designs_encode.Design.from_data(data)
 
-	images = (
-		(name.capitalize().replace('-', ' '), utils.image_to_base64_url(utils.xbrz_scale_wand_in_subprocess(image, 6)))
-		for name, image
-		in design.layer_images.items()
-	)
+	def gen():
+		for name, image in design.layer_images.items():
+			yield (
+				name.capitalize().replace('-', ' '),
+				utils.image_to_base64_url(utils.xbrz_scale_wand_in_subprocess(image, 6)),
+			)
 
-	return render_template(
+	return utils.stream_template(
 		'design.html',
 		created_at=dt.datetime.utcfromtimestamp(data['created_at']),
 		author_name=data['author_name'],
@@ -140,7 +141,7 @@ def design(design_code):
 		design_name=design_name,
 		design_type=type(design).display_name,
 		island_name=meta['mMtVNm'],
-		layers=images,
+		layers=stream_with_context(gen()),
 	)
 
 @bp.route('/designs/<author_id>')
@@ -165,17 +166,17 @@ def designs(author_id, *, pro):
 
 	author_name = data['headers'][0]['design_player_name']
 
-	def designs(data):
+	def designs():
 		for header in data['headers']:
 			# XXX unfortunately this page is made a lot slower due to requesting each design just for its
 			# design name. Our options aren't great though. We can either fetch each design on the client side,
 			# or we can omit the design name entirely.
-			data = msgpack.loads(acnh().request('GET', header['body']).content)
-			designs_api.merge_headers(data, header)
+			design_data = msgpack.loads(acnh().request('GET', header['body']).content)
+			designs_api.merge_headers(design_data, header)
 			design_code = designs_api.design_code(header['id'])
-			net_image = designs_encode.Design.from_data(data).net_image()
+			net_image = designs_encode.Design.from_data(design_data).net_image()
 			yield (
-				data['mMeta']['mMtDNm'],
+				design_data['mMeta']['mMtDNm'],
 				design_code,
 				utils.image_to_base64_url(net_image),
 			)
@@ -185,7 +186,7 @@ def designs(author_id, *, pro):
 		author_id=pretty_author_id,
 		author_name=author_name,
 		pro=pro,
-		designs=stream_with_context(designs(data)),
+		designs=stream_with_context(designs()),
 		design_type='Pro' if pro else 'basic',
 	)
 
