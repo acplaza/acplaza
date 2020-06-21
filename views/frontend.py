@@ -83,7 +83,7 @@ def index():
 		'index.html',
 		design_code_regex=designs_api.InvalidDesignCodeError.regex.pattern,
 		author_id_regex=designs_api.InvalidAuthorIdError.regex.pattern,
-		dodo_code_regex=app.add_template_global(dodo.InvalidDodoCodeError.regex.pattern,
+		dodo_code_regex=dodo.InvalidDodoCodeError.regex.pattern,
 	)
 
 @bp.route('/host-session/')
