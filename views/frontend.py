@@ -30,10 +30,6 @@ from utils import limiter
 
 def init_app(app):
 	app.register_blueprint(bp)
-	app.add_template_global(designs_api.InvalidDesignCodeError.regex.pattern, name='design_code_regex')
-	app.add_template_global(designs_api.InvalidAuthorIdError.regex.pattern, name='author_id_regex')
-	app.add_template_global(dodo.InvalidDodoCodeError.regex.pattern, name='dodo_code_regex')
-	app.add_template_global(designs_encode.Design.categories, name='design_categories')
 
 bp = Blueprint('frontend', __name__)
 
@@ -83,7 +79,12 @@ def logout():
 def index():
 	if not session.get('user_id'):
 		return redirect(url_for('.login'))
-	return render_template('index.html')
+	return render_template(
+		'index.html',
+		design_code_regex=designs_api.InvalidDesignCodeError.regex.pattern,
+		author_id_regex=designs_api.InvalidAuthorIdError.regex.pattern,
+		dodo_code_regex=app.add_template_global(dodo.InvalidDodoCodeError.regex.pattern,
+	)
 
 @bp.route('/host-session/')
 def host_session_form():
@@ -192,7 +193,7 @@ def designs(author_id, *, pro):
 
 @bp.route('/create-design')
 def pick_design_type_form():
-	return render_template('pick_design_type.html')
+	return render_template('pick_design_type.html', design_categories=designs_encode.Design.categories)
 
 @bp.route('/create-design/basic-design')
 def create_basic_design_form():
