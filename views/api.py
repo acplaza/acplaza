@@ -141,15 +141,17 @@ def list_designs(author_id):
 
 	page = designs_api.list_designs(author_id, pro=pro)
 	del page['offset'], page['count'], page['total']
-	page['creator_name'] = page['headers'][0]['design_player_name']
-	page['author_id'] = page['headers'][0]['design_player_id']
+	page['designs'] = page.pop('headers')
+	page['creator_name'] = page['designs'][0]['design_player_name']
+	page['author_id'] = page['designs'][0]['design_player_id']
 
-	for hdr in page['headers']:
-		hdr['design_code'] = designs_api.design_code(hdr['id'])
-		del hdr['design_player_name'], hdr['design_player_id'], hdr['digest'], hdr['id']
-		hdr['created_at'] = dt.datetime.utcfromtimestamp(hdr['created_at'])
+	for d in page['designs']:
+		d['design_code'] = designs_api.design_code(d['id'])
+		del d['id']
+		del d['design_player_name'], d['design_player_id'], d['digest']
+		d['created_at'] = dt.datetime.utcfromtimestamp(d['created_at'])
 		# designs cannot be updated, so why is this even here??
-		del hdr['updated_at']
+		del d['updated_at']
 
 	return page
 
