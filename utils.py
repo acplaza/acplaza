@@ -97,7 +97,10 @@ def process_authorization():
 	if not request.headers.get('User-Agent'):
 		raise MissingUserAgentStringError
 
-	if session.get('user_id'):
+	user_id = session.get('user_id')
+	if user_id:
+		if not request.user_id:
+			request.user_id = session['user_id']
 		return
 
 	token = request.headers.get('Authorization')

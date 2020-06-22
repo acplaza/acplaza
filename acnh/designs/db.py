@@ -8,7 +8,7 @@ from functools import partial
 from typing import Dict, Iterable, Tuple
 
 import wand.image
-from flask import session
+from flask import request
 
 from ..common import ACNHError
 from . import api, encode
@@ -42,7 +42,7 @@ def garbage_collect_designs(needed_slots: int, *, pro: bool):
 
 def delete_image(image_id):
 	image_author_id = pg().fetchval(queries.image_author_id(), image_id)
-	valid = image_author_id == session['user_id']
+	valid = image_author_id == request.user_id
 	if image_author_id is None:
 		raise UnknownImageIdError
 	elif not valid:
@@ -66,7 +66,7 @@ def create_pro_design(design):
 	image_id = pg().fetchval(
 		queries.create_image(),
 
-		session['user_id'],
+		request.user_id,
 		design.author_name,
 		design.design_name,
 		None,  # width
@@ -91,7 +91,7 @@ def create_basic_design(design, *, scale: bool):
 	image_id = pg().fetchval(
 		queries.create_image(),
 
-		session['user_id'],
+		request.user_id,
 		design.author_name,
 		design.design_name,
 		image.width,
