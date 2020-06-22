@@ -52,7 +52,7 @@ if os.name != 'nt':
 	# this is pretty gay but it's necessary to make uwsgi work since sys.executable is uwsgi otherwise
 	sys.executable = subprocess.check_output('which python3', shell=True, encoding='utf-8').rstrip()
 
-from acnh.common import ACNHError
+from acnh.errors import ACNHError
 
 def init_app(app):
 	csrf = CSRFProtect(app)

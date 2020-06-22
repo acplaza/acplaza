@@ -4,7 +4,7 @@ import re
 from http import HTTPStatus
 from typing import ClassVar, List, TYPE_CHECKING
 
-from .designs.format import PALETTE_SIZE, MAX_DESIGN_TILES
+from .designs.format import PALETTE_SIZE, MAX_DESIGN_TILES, BYTES_PER_PIXEL
 
 if TYPE_CHECKING:
 	from .designs.encode import Layer

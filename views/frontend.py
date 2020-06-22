@@ -21,7 +21,8 @@ from werkzeug.exceptions import HTTPException
 import utils
 from views import api
 from acnh import dodo
-from acnh.common import ACNHError, acnh
+from acnh.common import acnh
+from acnh.errors import ACNHError
 from acnh.designs import api as designs_api
 from acnh.designs import render as designs_render
 from acnh.designs import encode as designs_encode

@@ -36,15 +36,13 @@ from flask import g, request
 from nintendo.baas import BAASClient
 from nintendo.dauth import DAuthClient
 from nintendo.aauth import AAuthClient
-from nintendo.switch import ProdInfo, KeySet, TicketList
+from nintendo.switch import ProdInfo, KeySet
 from nintendo.nex.backend import BackEndClient
 from nintendo.nex.authentication import AuthenticationInfo
-from nintendo.nex import matchmaking
 from nintendo.games import ACNH
 from nintendo.settings import Settings
 
 from .utils import load_cached
-from .errors import ACNHError, InvalidFormatError
 
 def init_app(app):
 	app.teardown_appcontext(close_clients)

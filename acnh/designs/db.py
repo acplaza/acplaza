@@ -3,18 +3,15 @@
 import contextlib
 import random
 import time
-from http import HTTPStatus
 from functools import partial
-from typing import Dict, Iterable, Tuple
 
 import wand.image
 from flask import request
 
-from ..common import ACNHError
 from . import api, encode
-from .format import SIZE, WIDTH, HEIGHT, BYTES_PER_PIXEL, MAX_DESIGN_TILES
-from utils import config, pg, queries
-from ..errors import UnknownImageIdError, DeletionDeniedError, InvalidLayerSizeError, TiledImageTooBigError
+from .format import SIZE, WIDTH, HEIGHT
+from utils import pg, queries
+from ..errors import UnknownImageIdError, DeletionDeniedError, TiledImageTooBigError
 
 ISLAND_NAMES = [
 	'The Cloud',

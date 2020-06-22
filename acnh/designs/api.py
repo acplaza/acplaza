@@ -1,7 +1,5 @@
 # © 2020 io mintz <io@mintz.cc>
 
-import io
-import re
 import urllib.parse
 from http import HTTPStatus
 from functools import wraps
@@ -9,7 +7,6 @@ from typing import Union
 
 import msgpack
 
-from ..common import acnh, ACNHError, InvalidFormatError
 from .. import utils
 from ..errors import (
 	UnknownDesignCodeError,
