@@ -23,6 +23,7 @@ from acnh.errors import (
 	InvalidImageIdError,
 	InvalidImageArgument,
 	InvalidProArgument,
+	InvalidAuthorIdError,
 )
 from acnh.designs.encode import BasicDesign, Design
 from utils import limiter
@@ -134,7 +135,7 @@ def design_layer(design_code, layer):
 @bp.route('/designs/<author_id>')
 @limiter.limit('5 per 1 seconds')
 def list_designs(author_id):
-	author_id = int(designs_api.InvalidAuthorIdError.validate(author_id).replace('-', ''))
+	author_id = int(InvalidAuthorIdError.validate(author_id).replace('-', ''))
 	pro = request.args.get('pro', 'false')
 	InvalidProArgument.validate(pro)
 
@@ -144,12 +145,11 @@ def list_designs(author_id):
 
 	for hdr in page['headers']:
 		hdr['design_code'] = designs_api.design_code(hdr['id'])
-		del hdr['meta'], hdr['body'], hdr['design_player_name'], hdr['design_player_id'], hdr['digest']
+		del hdr['design_player_name'], hdr['design_player_id'], hdr['digest']
 		for dt_key in 'created_at', 'updated_at':
 			hdr[dt_key] = dt.datetime.utcfromtimestamp(hdr[dt_key])
 
 	return page
-
 
 @bp.route('/images', methods=['POST'])
 @limiter.limit('1 per 15s')
