@@ -4,20 +4,9 @@
 import io
 import wand.image
 
-from ..common import ACNHError
-from .encode import Design, InvalidLayerNameError
+from .encode import Design
 from .format import WIDTH, HEIGHT
-
-class InvalidLayerIndexError(ACNHError):
-	code = 31
-	message = 'invalid image layer'
-
-	def __init__(self, *, num_layers):
-		self.num_layers = num_layers
-
-	def to_dict(self):
-		d = super().to_dict()
-		d['num_layers'] = self.num_layers
+from ..errors import InvalidLayerIndexError, InvalidLayerNameError
 
 def gen_palette(raw_image):
 	palette = {}

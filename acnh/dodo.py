@@ -7,19 +7,7 @@ from http import HTTPStatus
 from nintendo.nex import matchmaking
 
 from .common import backend, ACNHError, InvalidFormatError
-
-class DodoCodeError(ACNHError):
-	pass
-
-class UnknownDodoCodeError(DodoCodeError):
-	code = 11
-	http_status = HTTPStatus.NOT_FOUND
-	message = 'unknown dodo code'
-
-class InvalidDodoCodeError(DodoCodeError, InvalidFormatError):
-	code = 12
-	message = 'invalid dodo code'
-	regex = re.compile('[A-HJ-NP-Y0-9]{5}')
+from .errors import UnknownDodoCodeError, InvalidDodoCodeError
 
 # _search_dodo_code is based on code provided by Yannik Marchand under the MIT License.
 # Copyright (c) 2017 Yannik Marchand

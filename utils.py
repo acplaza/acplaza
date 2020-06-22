@@ -24,6 +24,8 @@ from flask import current_app, g, request, session, url_for
 from flask_wtf.csrf import CSRFProtect
 from flask_limiter import Limiter
 
+from acnh.errors import MissingUserAgentStringError, IncorrectAuthorizationError
+
 # config comes first to resolve circular imports
 with open('config.toml') as f:
 	config = toml.load(f)
@@ -74,23 +76,6 @@ def pg():
 	pg = syncpg.connect(**config['postgres-db'])
 	g.pg = pg
 	return pg
-
-class AuthorizationError(ACNHError):
-	pass
-
-class MissingUserAgentStringError(AuthorizationError):
-	code = 91
-	message = 'User-Agent header required'
-	http_status = HTTPStatus.BAD_REQUEST
-
-class IncorrectAuthorizationError(AuthorizationError):
-	code = 92
-	message = 'invalid or incorrect Authorization header'
-	http_status = HTTPStatus.UNAUTHORIZED
-
-	def __init__(self, path=None):
-		self.path = path
-		super().__init__()
 
 token_exempt_views = set()
 

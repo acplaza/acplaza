@@ -11,56 +11,32 @@ import msgpack
 
 from ..common import acnh, ACNHError, InvalidFormatError
 from .. import utils
+from ..errors import (
+	UnknownDesignCodeError,
+	InvalidDesignCodeError,
+	UnknownAuthorIdError,
+	InvalidAuthorIdError,
+	InvalidDesignError,
+)
 
 DesignId = Union[str, int]
 
-class DesignError(ACNHError):
-	pass
-
-class UnknownDesignCodeError(DesignError):
-	code = 21
-	message = 'unknown design code'
-	http_status = HTTPStatus.NOT_FOUND
-
-_design_code_alphabet = '0123456789BCDFGHJKLMNPQRSTVWXY'
-DESIGN_CODE_ALPHABET = {c: val for val, c in enumerate(_design_code_alphabet)}
-
-class InvalidDesignCodeError(DesignError, InvalidFormatError):
-	code = 22
-	message = 'invalid design code'
-	_design_code_segment = f'[{_design_code_alphabet}]{{4}}'
-	regex = re.compile('-'.join([_design_code_segment] * 3))
-	del _design_code_segment
-
-class UnknownAuthorIdError(DesignError):
-	code = 23
-	message = 'unknown author ID'
-	http_status = HTTPStatus.NOT_FOUND
-
-class InvalidAuthorIdError(DesignError, InvalidFormatError):
-	code = 24
-	message = 'invalid author ID'
-	regex = re.compile('\d{4}-?\d{4}-?\d{4}', re.ASCII)
-
-# not an invalid format error because it's not constrainable to a regex
-class InvalidDesignError(DesignError):
-	code = 26
-	message = 'invalid design'
-	http_status = HTTPStatus.BAD_REQUEST
+DESIGN_CODE_ALPHABET = InvalidDesignCodeError.DESIGN_CODE_ALPHABET
+DESIGN_CODE_ALPHABET_VALUES = InvalidDesignCodeError.DESIGN_CODE_ALPHABET_VALUES
 
 def design_id(design_code):
 	code = design_code.replace('-', '')
 	n = 0
 	for c in code:
 		n *= 30
-		n += DESIGN_CODE_ALPHABET[c]
+		n += DESIGN_CODE_ALPHABET_VALUES[c]
 	return n
 
 def design_code(design_id):
 	digits = []
 	while design_id:
 		design_id, digit = divmod(design_id, 30)
-		digits.append(_design_code_alphabet[digit])
+		digits.append(DESIGN_CODE_ALPHABET[digit])
 
 	return add_hyphens(''.join(reversed(digits)).zfill(4 * 3))
 

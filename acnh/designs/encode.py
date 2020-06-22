@@ -4,34 +4,18 @@ import contextlib
 import datetime as dt
 import io
 import itertools
-import re
 import random
 import struct
 from dataclasses import dataclass, field
 from typing import List, Dict, Type, ClassVar, Tuple, Optional, DefaultDict
-from http import HTTPStatus
 
 import wand.image
 import wand.color
 import msgpack
 
-from .api import DesignError
 from .. import utils
 from .format import PALETTE_SIZE, SIZE as STANDARD, WIDTH as STANDARD_WIDTH, HEIGHT as STANDARD_HEIGHT
-
-class InvalidLayerNameError(DesignError):
-	code = 37
-	message = 'Invalid image layer name.'
-	valid_layer_names: List[str]
-	http_status = HTTPStatus.BAD_REQUEST
-
-	def __init__(self, design):
-		self.valid_layer_names = list(design.external_layer_names)
-
-	def to_dict(self):
-		d = super().to_dict()
-		d['valid_layer_names'] = self.valid_layer_names
-		return d
+from ..errors import InvalidLayerNameError, MissingLayerError, InvalidPaletteError, InvalidLayerSizeError
 
 XY = Tuple[int, int]
 
@@ -555,34 +539,6 @@ class BrimmedHat(Design):
 		net_img.composite(bottom, 6, 206)
 		net_img.composite(self.net_image_mask, 0, 0)
 		return net_img
-
-class InvalidLayerError(DesignError):
-	layer: Layer
-	http_status = HTTPStatus.BAD_REQUEST
-
-	def __init__(self, layer):
-		self.layer = layer
-
-	def to_dict(self):
-		d = super().to_dict()
-		d['layer_name'] = self.layer.name
-		d['layer_size'] = self.layer.size
-		d['error'] = self.message.format(self)
-		return d
-
-class InvalidPaletteError(DesignError):
-	code = 27
-	message = f'the combined palette of all layers exceed {PALETTE_SIZE} colors'
-	http_status = HTTPStatus.BAD_REQUEST
-
-class InvalidLayerSizeError(DesignError):
-	code = 28
-	message = 'layer "{0.layer.name}" did not meet the expected size ({0.layer.size[0]}×{0.layer.size[1]})'
-
-class MissingLayerError(InvalidLayerError):
-	code = 38
-	message = 'Payload was missing one or more layers. First missing layer: "{0.layer.name}"'
-	http_status = HTTPStatus.BAD_REQUEST
 
 with open('data/preview image.jpg', 'rb') as f:
 	dummy_preview_image = f.read()

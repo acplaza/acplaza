@@ -12,8 +12,9 @@ from flask import session
 
 from ..common import ACNHError
 from . import api, encode
-from .format import SIZE, WIDTH, HEIGHT, BYTES_PER_PIXEL
+from .format import SIZE, WIDTH, HEIGHT, BYTES_PER_PIXEL, MAX_DESIGN_TILES
 from utils import config, pg, queries
+from ..errors import UnknownImageIdError, DeletionDeniedError, InvalidLayerSizeError, TiledImageTooBigError
 
 ISLAND_NAMES = [
 	'The Cloud',
@@ -22,19 +23,6 @@ ISLAND_NAMES = [
 ]
 
 island_name = partial(random.choice, ISLAND_NAMES)
-
-class ImageError(ACNHError):
-	pass
-
-class UnknownImageIdError(ImageError):
-	code = 31
-	message = 'unknown image ID'
-	http_status = HTTPStatus.NOT_FOUND
-
-class DeletionDeniedError(ImageError):
-	code = 32
-	message = 'you do not own this image'
-	http_status = HTTPStatus.UNAUTHORIZED
 
 def garbage_collect_designs(needed_slots: int, *, pro: bool):
 	"""Free at least needed_slots. Pass pro depending on whether Pro slots are needed."""
@@ -67,47 +55,8 @@ def delete_image(image_id):
 	for design_id in design_ids:
 		api.delete_design(design_id)
 
-class InvalidImageError(ImageError):
-	http_status = HTTPStatus.BAD_REQUEST
-
-class SingleLayerRequired(InvalidImageError):
-	code = 33
-	message = (
-		'A single layer was required, but more than one was passed. '
-		'If tiling was requested, do not pass multiple layers.'
-	)
-
-class InvalidLayerSizeError(InvalidImageError):
-	code = 34
-	message = 'One or more layers was not {0.width}×{0.height}.'
-
-	def __init__(self, width, height):
-		super().__init__()
-		self.width = width
-		self.height = height
-
-	def to_dict(self):
-		d = super().to_dict()
-		d['expected_width'] = self.width
-		d['expected_height'] = self.height
-		d['expected_byte_length'] = self.width * self.height * BYTES_PER_PIXEL
-		d['message'] = self.message.format(self)
-		return d
-
-MAX_DESIGN_TILES = 16
-
 def num_tiles(width, height):
 	return width // WIDTH * height // HEIGHT
-
-class TiledImageTooBigError(InvalidImageError):
-	code = 35
-	message = f'The uploaded image would exceed {MAX_DESIGN_TILES} tiles.'
-	status = HTTPStatus.REQUEST_ENTITY_TOO_LARGE
-
-	@classmethod
-	def validate(cls, img):
-		if num_tiles(img.width, img.height) > MAX_DESIGN_TILES:
-			raise cls
 
 def create_image(design, **kwargs):
 	return (create_pro_design if design.pro else create_basic_design)(design, **kwargs)

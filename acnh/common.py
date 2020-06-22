@@ -26,10 +26,7 @@ import datetime as dt
 import enum
 import functools
 import logging
-import re
 import urllib.parse
-from typing import ClassVar
-from http import HTTPStatus
 
 import msgpack
 import toml
@@ -47,21 +44,11 @@ from nintendo.games import ACNH
 from nintendo.settings import Settings
 
 from .utils import load_cached
+from .errors import ACNHError, InvalidFormatError
 
 def init_app(app):
 	app.teardown_appcontext(close_clients)
 	app.after_request(close_backend)
-
-class ACNHError(Exception):
-	code: ClassVar[int]
-	message: ClassVar[str]
-	http_status: ClassVar[int]
-
-	def __int__(self):
-		return self.code
-
-	def to_dict(self):
-		return {'error': self.message, 'error_code': self.code, 'http_status': self.http_status}
 
 # this is here to resolve circular imports
 from utils import config
@@ -80,21 +67,6 @@ with open(config['ticket-path'], 'rb') as f:
 	ticket = f.read()
 
 backend_settings = Settings('switch.cfg')
-
-class InvalidFormatError(ACNHError):
-	http_status = HTTPStatus.BAD_REQUEST
-	regex: re.Pattern
-
-	def to_dict(self):
-		d = super().to_dict()
-		d['validation_regex'] = self.regex.pattern
-		return d
-
-	@classmethod
-	def validate(cls, s):
-		if not cls.regex.fullmatch(s):
-			raise cls
-		return s
 
 class ACNHClient:
 	BASE = 'https://api.hac.lp1.acbaa.srv.nintendo.net'

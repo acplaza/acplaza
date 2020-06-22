@@ -18,26 +18,23 @@ import acnh.designs.render as designs_render
 import acnh.designs.db as designs_db
 import utils
 import tarfile_stream
-from acnh.common import InvalidFormatError
-from acnh.designs.api import DesignError, InvalidDesignCodeError
-from acnh.designs.db import ImageError
-from acnh.designs.encode import BasicDesign, Design, MissingLayerError, InvalidLayerNameError
+from acnh.errors import (
+	DesignError,
+	InvalidDesignCodeError,
+	MissingLayerError,
+	InvalidLayerNameError,
+	InvalidScaleFactorError,
+	CannotScaleThumbnailError,
+	InvalidImageError,
+	InvalidImageIdError,
+)
+from acnh.designs.encode import BasicDesign, Design
 from utils import limiter
 
 def init_app(app):
 	app.register_blueprint(bp)
 
 bp = Blueprint('api', __name__, url_prefix='/api/v0')
-
-class InvalidScaleFactorError(InvalidFormatError):
-	message = 'invalid scale factor'
-	code = 23
-	regex = re.compile('[123456]')
-
-class CannotScaleThumbnailError:
-	message = 'cannot scale thumbnails'
-	code = 29
-	http_status = HTTPStatus.BAD_REQUEST
 
 @bp.route('/host-session/<dodo_code>')
 @limiter.limit('1 per 4 seconds')
@@ -137,11 +134,6 @@ def design_layer(design_code, layer):
 		'Content-Disposition': f"inline; filename*=utf-8''{encoded_filename}"
 	})
 
-class InvalidProArgument(DesignError, InvalidFormatError):
-	message = 'invalid value for pro argument'
-	code = 25
-	regex = re.compile('[01]|(?:false|true)|[ft]', re.IGNORECASE)
-
 @bp.route('/designs/<author_id>')
 @limiter.limit('5 per 1 seconds')
 def list_designs(author_id):
@@ -161,30 +153,6 @@ def list_designs(author_id):
 
 	return page
 
-class InvalidImageArgument(ImageError):
-	code = 36
-	message = 'missing or invalid required image argument {.argument_name}'
-	http_status = HTTPStatus.BAD_REQUEST
-
-	def __init__(self, argument_name):
-		self.argument_name = argument_name
-
-	def to_dict(self):
-		d = super().to_dict()
-		d['argument_name'] = self.argument_name
-		d['error'] = d['error'].format(self)
-		return d
-
-# TODO add which layer failed
-class InvalidImageError(ImageError):
-	code = 39
-	message = 'One or more layers submitted represented an invalid image.'
-	status = HTTPStatus.BAD_REQUEST
-
-class InvalidImageIdError(ImageError, InvalidFormatError):
-	code = 41  # XXX rip my nice "x/10 = category" system
-	message = 'Invalid image ID.'
-	regex = re.compile('[0-9]+')
 
 @bp.route('/images', methods=['POST'])
 @limiter.limit('1 per 15s')
@@ -338,11 +306,6 @@ def refresh_image(image_id):
 
 def _refresh_image(image_id):
 	return designs_db.refresh_image(int(InvalidImageIdError.validate(image_id)))
-
-class InvalidImageDeletionToken(ImageError, InvalidFormatError):
-	code = 42
-	message = 'invalid image deletion token'
-	regex = re.compile('[a-zA-Z0-9]+')
 
 @bp.route('/image/<image_id>', methods=['DELETE'])
 def delete_image(image_id):
