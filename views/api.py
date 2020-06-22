@@ -140,14 +140,16 @@ def list_designs(author_id):
 	InvalidProArgument.validate(pro)
 
 	page = designs_api.list_designs(author_id, pro=pro)
+	del page['offset'], page['count'], page['total']
 	page['creator_name'] = page['headers'][0]['design_player_name']
 	page['author_id'] = page['headers'][0]['design_player_id']
 
 	for hdr in page['headers']:
 		hdr['design_code'] = designs_api.design_code(hdr['id'])
-		del hdr['design_player_name'], hdr['design_player_id'], hdr['digest']
-		for dt_key in 'created_at', 'updated_at':
-			hdr[dt_key] = dt.datetime.utcfromtimestamp(hdr[dt_key])
+		del hdr['design_player_name'], hdr['design_player_id'], hdr['digest'], hdr['id']
+		hdr['created_at'] = dt.datetime.utcfromtimestamp(hdr['created_at'])
+		# designs cannot be updated, so why is this even here??
+		del hdr['updated_at']
 
 	return page
 
