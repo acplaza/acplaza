@@ -160,7 +160,7 @@ with open('/path/to/<guid>.dat', 'rb') as f:
 8. Use [nxdumptool](https://github.com/DarkMatterCore/nxdumptool/releases) to dump your AC:NH ticket.
    You must have the eShop version to proceed. Game cards are not supported. 
    Use nxdumptool to dump the base ticket (not the update ticket) for the game.
-9. Dump your save file using [JKSV](https://github.com/J-D-K/JKSV/releases) to back up your save file for the game.
+9. Dump your save file using [JKSV](https://github.com/J-D-K/JKSV/releases).
    Use [effective-guacamole](https://github.com/3096/effective-guacamole) to decrypt your save file.
    Your ACNH user ID and password are contained in the VillagerN/personal.dat file after decryption.
    Use the following python code to extract it:
