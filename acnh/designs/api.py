@@ -51,7 +51,7 @@ def merge_headers(data, headers):
 
 def download_design(design_id_or_code: DesignId, partial=False):
 	if isinstance(design_id_or_code, str):
-		design_id_ = design_id(design_id_or_code)
+		design_id_ = design_id(InvalidDesignCodeError.validate(design_id_or_code))
 	else:
 		design_id_ = design_id_or_code
 
@@ -91,7 +91,7 @@ def list_designs(author_id: int, *, pro: bool, with_binaries: bool = False):
 
 def delete_design(design_id_or_code) -> None:
 	if isinstance(design_id_or_code, str):
-		design_id_ = design_id(design_id_or_code)
+		design_id_ = design_id(InvalidDesignCodeError.validate(design_id_or_code))
 	else:
 		design_id_ = design_id_or_code
 
