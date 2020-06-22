@@ -160,16 +160,19 @@ with open('/path/to/<guid>.dat', 'rb') as f:
 8. Use [nxdumptool](https://github.com/DarkMatterCore/nxdumptool/releases) to dump your AC:NH ticket.
    You must have the eShop version to proceed. Game cards are not supported. 
    Use nxdumptool to dump the base ticket (not the update ticket) for the game.
-9. Install these FS patches on your switch in order to disable CA Verification:
-   https://github.com/misson20000/exefs_patches/tree/master/atmosphere/exefs_patches/disable_ca_verification
-10. Set up a web proxy such as Charles.
-    Configure your Switch's network settings to proxy through your web proxying software.
-11. In game, log on to the Custom Designs kiosk at the Able Sister's shop.
-    Then intercept your Switch's request to https://api.hac.lp1.acbaa.srv.nintendo.net/api/v1/auth_token.
-    The request body contains a msgpack encoded dictionary like this:
-    `{'id': 1311768467445894639, 'password': '64 characters here'}`.
-    This user ID and password goes in the config as `acnh-user-id` and `acnh-password`.
-12. Edit config.toml according to the information and files you retrieved.
+9. Dump your save file using [JKSV](https://github.com/J-D-K/JKSV/releases) to back up your save file for the game.
+   Use [effective-guacamole](https://github.com/3096/effective-guacamole) to decrypt your save file.
+   Your ACNH user ID and password are contained in the VillagerN/personal.dat file after decryption.
+   Use the following python code to extract it:
+
+```py
+with open('Villager0/personal.dat.dec', 'rb') as f:
+	f.seek(0x6B838)
+	print('ACNH User ID:', hex(int.from_bytes(f.read(8), 'little')))
+	print('ACNH Password:', f.read(64).decode('ascii'))
+```
+
+10. Edit config.toml according to the information and files you retrieved.
 
 ## License
 
