@@ -47,7 +47,7 @@ class Layer(metaclass=LayerMeta):
 
 	def validate(self, image):
 		if image.size != self.size:
-			raise InvalidLayerSizeError(self.name)
+			raise InvalidLayerSizeError(self.name, *self.size)
 
 	@property
 	def width(self):
@@ -200,6 +200,7 @@ class Design:
 
 		return cls(layers=out, **kwargs)
 
+	# pylint: disable=too-many-arguments
 	@classmethod
 	def copy(cls, dst, src, dst_position, src_position, dimensions):
 		width, height = dimensions
@@ -208,11 +209,12 @@ class Design:
 		y_slice = slice(y, y + height)
 		dst.composite(src[x_slice, y_slice], *dst_position)
 
+	# pylint: disable=no-self-use
 	def net_image(self) -> wand.image.Image:
 		...
 
 	def validate(self):
-		for layer_name, layer in self.external_layer_names.items():
+		for layer in self.external_layer_names.values():
 			try:
 				layer.validate(self.layer_images[layer.name])
 			except KeyError:
@@ -557,8 +559,6 @@ DUMMY_EXTRA_METADATA = {
 }
 
 def tile(image):
-	num_v_segments = image.width // STANDARD_WIDTH
-	num_h_segments = image.height // STANDARD_HEIGHT
 	# y, x so that the images are in row-major order not column-major order,
 	# which is how most people expect iamges to be tiled
 	for y, x in itertools.product(
@@ -622,7 +622,6 @@ def encode_basic(design):
 def encode_pro(design):
 	design.validate()
 	pxss = [memoryview(bytearray(image.export_pixels())) for image in design.internalize()]
-	palette = gen_palette(pxss)
 	img_data = encode_image_data(pxss)
 	return False, img_data
 

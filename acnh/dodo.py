@@ -1,11 +1,10 @@
 # © 2020 io mintz <io@mintz.cc>
 
 import datetime as dt
-import re
-from http import HTTPStatus
 
 from nintendo.nex import matchmaking
 
+from .common import backend
 from .errors import UnknownDodoCodeError, InvalidDodoCodeError
 
 # _search_dodo_code is based on code provided by Yannik Marchand under the MIT License.

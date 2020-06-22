@@ -12,4 +12,3 @@ with app.app_context():
 		print('Secret not found', file=sys.stderr)
 		sys.exit(1)
 	print(encode_token(user_id, secret))
-

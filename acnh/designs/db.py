@@ -1,17 +1,17 @@
 # © 2020 io mintz <io@mintz.cc>
 
-import contextlib
 import random
 import time
 from functools import partial
+from typing import List
 
 import wand.image
 from flask import request
 
 from . import api, encode
-from .format import SIZE, WIDTH, HEIGHT
+from .format import SIZE
 from utils import pg, queries
-from ..errors import UnknownImageIdError, DeletionDeniedError, TiledImageTooBigError
+from ..errors import UnknownImageIdError, DeletionDeniedError, TiledImageTooBigError, num_tiles
 
 ISLAND_NAMES = [
 	'The Cloud',
@@ -42,7 +42,7 @@ def delete_image(image_id):
 	valid = image_author_id == request.user_id
 	if image_author_id is None:
 		raise UnknownImageIdError
-	elif not valid:
+	if not valid:
 		raise DeletionDeniedError
 
 	with pg().transaction(isolation='serializable'):
@@ -51,9 +51,6 @@ def delete_image(image_id):
 
 	for design_id in design_ids:
 		api.delete_design(design_id)
-
-def num_tiles(width, height):
-	return width // WIDTH * height // HEIGHT
 
 def create_image(design, **kwargs):
 	return (create_pro_design if design.pro else create_basic_design)(design, **kwargs)
@@ -137,29 +134,43 @@ def refresh_image(image_id):
 	if len(rows) == required_design_count:
 		return None
 
+	if image_info['pro']:
+		yield from refresh_pro_image(image_info)
+	else:
+		yield from refresh_basic_image(rows)
+
+def gather_layers(cls, layers: List[wand.image.Image]):
+	named_layers = {}
+	for layer_def, blob in zip(cls.external_layers, layers):
+		named_layers[layer_def.name] = img = layer_def.as_wand()
+		img.import_pixels(data=blob, channel_map='RGBA')
+	return named_layers
+
+def refresh_pro_image(image_info):
+	cls = encode.Design(image_info['type_code'])
+	layers = gather_layers(cls, image_info['layers'])
+
+	# pylint: disable=not-callable
+	design = cls(layers=layers, island_name=island_name(), design_name=image_info['image_name'])
+	was_quantized, encoded = encode.encode(design)
+	design_id = api.create_design(encoded)
+	create_design(image_id=image_info['image_id'], design_id=design_id, position=0, pro=True)
+	yield was_quantized, design_id
+
+def refresh_basic_image(rows):
+	image_info = rows[0]
+	required_design_count = num_tiles(image_info['width'], image_info['height'])
+
 	design_positions = {row['position'] for row in rows}
 	required_positions = set(range(1, required_design_count + 1))
 	missing_positions = required_positions - design_positions
-	cls = encode.Design(image_info['type_code'])
-	if image_info['pro']:
-		# TODO deduplicate this from views/frontend.py
-		layers = {}
-		for layer_def, blob in zip(cls.external_layers, image_info['layers']):
-			layers[layer_def.name] = img = layer_def.as_wand()
-			layer_def.import_pixels(data=blob, channel_map='RGBA')
 
-		design = cls(layers=layers, island_name=island_name(), design_name=image_info['image_name'])
-		was_quantized, encoded = encode.encode(design)
-		design_id = api.create_design(encoded)
-		create_design(image_id=image_id, design_id=design_id, position=0, pro=True)
-		yield was_quantized, design_id
-	else:
-		img = wand.image.Image(width=image_info['width'], height=image_info['height'])
-		img.import_pixels(data=image_info['layers'][0], channel_map='RGBA')
-		design = encode.BasicDesign(layers={'0': img}, design_name=image_info['image_name'], island_name=island_name())
-		images = get_images(img, scale=image_info['mode'] == 'scale')
-		to_create = [(i, img) for i, img in enumerate(images, 1) if i in missing_positions]
-		yield from create_designs(image_id, design, to_create, tile=image_info['mode'] == 'tile')
+	img = wand.image.Image(width=image_info['width'], height=image_info['height'])
+	img.import_pixels(data=image_info['layers'][0], channel_map='RGBA')
+	design = encode.BasicDesign(layers={'0': img}, design_name=image_info['image_name'], island_name=island_name())
+	images = get_images(img, scale=image_info['mode'] == 'scale')
+	to_create = [(i, img) for i, img in enumerate(images, 1) if i in missing_positions]
+	yield from create_designs(image_info['image_id'], design, to_create, tile=image_info['mode'] == 'tile')
 
 def create_design(*, image_id, design_id, position, pro):
 	pg().execute(queries.create_design(), image_id, design_id, position, pro)

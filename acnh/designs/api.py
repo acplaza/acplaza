@@ -2,17 +2,15 @@
 
 import urllib.parse
 from http import HTTPStatus
-from functools import wraps
 from typing import Union
 
 import msgpack
 
 from .. import utils
+from ..common import acnh
 from ..errors import (
 	UnknownDesignCodeError,
 	InvalidDesignCodeError,
-	UnknownAuthorIdError,
-	InvalidAuthorIdError,
 	InvalidDesignError,
 )
 

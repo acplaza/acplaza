@@ -2,8 +2,8 @@
 
 import os.path
 import time
-from math import floor
 
+# pylint: disable=dangerous-default-value
 def load_cached(path, callback, *, duration=23 * 60 * 60, binary=False, _cache={}):
 	now = time.time()
 

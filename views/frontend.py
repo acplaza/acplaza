@@ -6,13 +6,13 @@ from http import HTTPStatus
 import msgpack
 import wand.image
 from flask import (
+	abort,
 	Blueprint,
 	render_template,
 	session,
 	request,
 	redirect,
 	url_for,
-	current_app,
 	stream_with_context,
 	flash,
 )
@@ -22,9 +22,8 @@ import utils
 from views import api
 from acnh import dodo
 from acnh.common import acnh
-from acnh.errors import ACNHError
+from acnh.errors import ACNHError, InvalidAuthorIdError, InvalidDesignCodeError, InvalidDodoCodeError
 from acnh.designs import api as designs_api
-from acnh.designs import render as designs_render
 from acnh.designs import encode as designs_encode
 from acnh.designs import db as designs_db
 from utils import limiter
@@ -57,7 +56,7 @@ def login():
 		# with the form
 		abort(HTTPStatus.UNAUTHORIZED)
 
-	user_id, secret = utils.validate_token(token)
+	user_id = utils.validate_token(token)
 	if not user_id:
 		return 'auth failed', HTTPStatus.UNAUTHORIZED
 
@@ -80,11 +79,12 @@ def logout():
 def index():
 	if not session.get('user_id'):
 		return redirect(url_for('.login'))
+	# pylint: disable=no-member
 	return render_template(
 		'index.html',
-		design_code_regex=designs_api.InvalidDesignCodeError.regex.pattern,
-		author_id_regex=designs_api.InvalidAuthorIdError.regex.pattern,
-		dodo_code_regex=dodo.InvalidDodoCodeError.regex.pattern,
+		design_code_regex=InvalidDesignCodeError.regex.pattern,
+		author_id_regex=InvalidAuthorIdError.regex.pattern,
+		dodo_code_regex=InvalidDodoCodeError.regex.pattern,
 	)
 
 @bp.route('/host-session/')
@@ -157,7 +157,7 @@ def pro_designs(author_id):
 	return designs(author_id, pro=True)
 
 def designs(author_id, *, pro):
-	author_id = int(designs_api.InvalidAuthorIdError.validate(author_id).replace('-', ''))
+	author_id = int(InvalidAuthorIdError.validate(author_id).replace('-', ''))
 	pretty_author_id = designs_api.add_hyphens(str(author_id))
 	data = designs_api.list_designs(author_id, pro=pro, with_binaries=True)
 	if not data['total']:
@@ -170,9 +170,6 @@ def designs(author_id, *, pro):
 
 	def designs():
 		for header in data['headers']:
-			# XXX unfortunately this page is made a lot slower due to requesting each design just for its
-			# design name. Our options aren't great though. We can either fetch each design on the client side,
-			# or we can omit the design name entirely.
 			design_data = msgpack.loads(acnh().request('GET', header['body']).content)
 			designs_api.merge_headers(design_data, header)
 			design_code = designs_api.design_code(header['id'])
@@ -203,7 +200,7 @@ def create_basic_design_form():
 @bp.route('/create-design/<_>', methods=['POST'])
 @limiter.limit('1 per 15 seconds')
 def create_image(_):
-	gen = stream_with_context(api._create_image())
+	gen = stream_with_context(api.create_image_gen())
 	image_id = next(gen)
 	return utils.stream_template(
 		'created_image.html', image_id=image_id, results=format_created_designs_gen(gen), verb='created',
@@ -227,16 +224,14 @@ def create_pro_design_form(design_type_name):
 def image(image_id):
 	image_id = int(api.InvalidImageIdError.validate(image_id))
 	data = designs_db.image(image_id)
-	image = data['image']
+	image_info = data['image']
 	designs = data['designs']
-	cls = designs_encode.Design(image['type_code'])
-	cls_kwargs = dict(author_name=image['author_name'], design_name=image['image_name'])
-	if image['pro']:
-		layers = {}
-		for layer_def, blob in zip(cls.external_layers, image['layers']):
-			layers[layer_def.name] = img = layer_def.as_wand()
-			img.import_pixels(data=blob, channel_map='RGBA')
+	cls = designs_encode.Design(image_info['type_code'])
+	cls_kwargs = dict(author_name=image_info['author_name'], design_name=image_info['image_name'])
+	if image_info['pro']:
+		layers = designs_db.gather_layers(cls, image_info['layers'])
 
+		# pylint: disable=not-callable
 		design = cls(layers=layers, **cls_kwargs)
 
 		layers = [
@@ -248,18 +243,19 @@ def image(image_id):
 			in design.layer_images.items()
 		]
 	else:
-		img = wand.image.Image(width=image['width'], height=image['height'])
-		img.import_pixels(data=image['layers'][0], channel_map='RGBA')
+		img = wand.image.Image(width=image_info['width'], height=image_info['height'])
+		img.import_pixels(data=image_info['layers'][0], channel_map='RGBA')
+		# pylint: disable=not-callable
 		design = cls(**cls_kwargs, layers={'0': img})
 		layers = [('0', utils.image_to_base64_url(img))]
 
-	required_design_count = 1 if image['pro'] else designs_db.num_tiles(img.width, img.height)
+	required_design_count = 1 if image_info['pro'] else designs_db.num_tiles(img.width, img.height)
 
 	return render_template(
 		'image.html',
 		image=image, design=design, layers=layers, designs=designs, required_design_count=required_design_count,
 		design_type=cls.display_name,
-		preview=utils.image_to_base64_url(design.net_image()) if image['pro'] else None,
+		preview=utils.image_to_base64_url(design.net_image()) if image_info['pro'] else None,
 	)
 
 @bp.route('/refresh-image/<image_id>')

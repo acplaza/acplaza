@@ -4,15 +4,12 @@ import asyncio
 import base64
 import contextlib
 import datetime as dt
-import io
-import pickle
 import json
 import secrets
 import subprocess
 import os
 import sys
 import urllib.parse
-from http import HTTPStatus
 
 import flask.json
 import jinja2
@@ -24,7 +21,7 @@ from flask import current_app, g, request, session, url_for
 from flask_wtf.csrf import CSRFProtect
 from flask_limiter import Limiter
 
-from acnh.errors import MissingUserAgentStringError, IncorrectAuthorizationError
+from acnh.errors import ACNHError, MissingUserAgentStringError, IncorrectAuthorizationError
 
 # config comes first to resolve circular imports
 with open('config.toml') as f:
@@ -51,8 +48,6 @@ limiter = Limiter(key_func=limiter_key)
 if os.name != 'nt':
 	# this is pretty gay but it's necessary to make uwsgi work since sys.executable is uwsgi otherwise
 	sys.executable = subprocess.check_output('which python3', shell=True, encoding='utf-8').rstrip()
-
-from acnh.errors import ACNHError
 
 def init_app(app):
 	csrf = CSRFProtect(app)
@@ -107,7 +102,7 @@ def process_authorization():
 	if not token:
 		raise IncorrectAuthorizationError(request.full_path.rstrip('?'))
 
-	user_id, secret = validate_token(token)
+	user_id = validate_token(token)
 	if not user_id:
 		raise IncorrectAuthorizationError
 
@@ -117,16 +112,16 @@ def validate_token(token):
 	try:
 		user_id, secret = parse_token(token)
 	except ValueError:
-		return False, False
+		return False
 
 	db_secret = pg().fetchval(queries.secret(), user_id)
 	if db_secret is None:
-		return False, False
+		return False
 
 	if not secrets.compare_digest(secret, db_secret):
-		return False, False
+		return False
 
-	return user_id, secret
+	return user_id
 
 def encode_token(user_id, secret):
 	left = str(user_id)
@@ -153,14 +148,14 @@ class CustomJSONEncoder(flask.json.JSONEncoder):
 		kwargs['ensure_ascii'] = False
 		super().__init__(**kwargs)
 
-	def default(self, x):
-		if isinstance(x, bytes):
-			return base64.b64encode(x).decode()
-		if isinstance(x, dt.datetime):
-			return x.replace(tzinfo=dt.timezone.utc).isoformat()
-		if isinstance(x, asyncpg.Record):
-			return dict(x)
-		return super().default(x)
+	def default(self, o):
+		if isinstance(o, bytes):
+			return base64.b64encode(o).decode()
+		if isinstance(o, dt.datetime):
+			return o.replace(tzinfo=dt.timezone.utc).isoformat()
+		if isinstance(o, asyncpg.Record):
+			return dict(o)
+		return super().default(o)
 
 def xbrz_scale_wand_in_subprocess(img: wand.image.Image, factor):
 	data = bytearray(img.export_pixels(channel_map='RGBA', storage='char'))

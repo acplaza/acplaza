@@ -4,7 +4,7 @@ import re
 from http import HTTPStatus
 from typing import ClassVar, List, TYPE_CHECKING
 
-from .designs.format import PALETTE_SIZE, MAX_DESIGN_TILES, BYTES_PER_PIXEL
+from .designs.format import PALETTE_SIZE, MAX_DESIGN_TILES, BYTES_PER_PIXEL, WIDTH, HEIGHT
 
 if TYPE_CHECKING:
 	from .designs.encode import Layer
@@ -46,7 +46,7 @@ class UnknownDodoCodeError(DodoCodeError):
 class InvalidDodoCodeError(DodoCodeError, InvalidFormatError):
 	code = 102
 	message = 'invalid dodo code'
-	regex = re.compile('[A-HJ-NP-Y0-9]{5}')
+	regex = re.compile(r'[A-HJ-NP-Y0-9]{5}')
 
 class ImageError(ACNHError):
 	pass
@@ -78,17 +78,17 @@ class UnknownAuthorIdError(DesignError):
 class InvalidScaleFactorError(InvalidFormatError):
 	message = 'invalid scale factor'
 	code = 204
-	regex = re.compile('[123456]')
+	regex = re.compile(r'[123456]')
 
 class InvalidAuthorIdError(DesignError, InvalidFormatError):
 	code = 205
 	message = 'invalid author ID'
-	regex = re.compile('\d{4}-?\d{4}-?\d{4}', re.ASCII)
+	regex = re.compile(r'\d{4}-?\d{4}-?\d{4}', re.ASCII)
 
 class InvalidProArgument(DesignError, InvalidFormatError):
 	message = 'invalid value for pro argument'
 	code = 206
-	regex = re.compile('[01]|(?:false|true)|[ft]', re.IGNORECASE)
+	regex = re.compile(r'[01]|(?:false|true)|[ft]', re.IGNORECASE)
 
 # not an invalid format error because it's not constrainable to a regex
 class InvalidDesignError(DesignError):
@@ -101,13 +101,9 @@ class InvalidPaletteError(DesignError):
 	message = f'the combined palette of all layers exceeds {PALETTE_SIZE} colors'
 	http_status = HTTPStatus.BAD_REQUEST
 
-class InvalidLayerSizeError(DesignError):
-	code = 209
-	message = 'layer "{0.layer.name}" did not meet the expected size ({0.layer.size[0]}×{0.layer.size[1]})'
-
-class CannotScaleThumbnailError:
+class CannotScaleThumbnailError(DesignError):
 	message = 'cannot scale thumbnails'
-	code = 230
+	code = 209
 	http_status = HTTPStatus.BAD_REQUEST
 
 class UnknownImageIdError(ImageError):
@@ -120,6 +116,7 @@ class InvalidLayerIndexError(ACNHError):
 	message = 'invalid image layer'
 
 	def __init__(self, *, num_layers):
+		super().__init__()
 		self.num_layers = num_layers
 
 	def to_dict(self):
@@ -131,22 +128,20 @@ class DeletionDeniedError(ImageError):
 	message = 'you do not own this image'
 	http_status = HTTPStatus.UNAUTHORIZED
 
-class InvalidImageError(ImageError):
-	http_status = HTTPStatus.BAD_REQUEST
-
-class SingleLayerRequired(InvalidImageError):
+class SingleLayerRequired(ImageError):
 	code = 304
 	message = (
 		'A single layer was required, but more than one was passed. '
 		'If tiling was requested, do not pass multiple layers.'
 	)
 
-class InvalidLayerSizeError(InvalidImageError):
+class InvalidLayerSizeError(ImageError):
 	code = 305
-	message = 'One or more layers was not {0.width}×{0.height}.'
+	message = 'layer {0.name} was not {0.width}×{0.height}.'
 
-	def __init__(self, width, height):
+	def __init__(self, name, width, height):
 		super().__init__()
+		self.name = name
 		self.width = width
 		self.height = height
 
@@ -155,10 +150,14 @@ class InvalidLayerSizeError(InvalidImageError):
 		d['expected_width'] = self.width
 		d['expected_height'] = self.height
 		d['expected_byte_length'] = self.width * self.height * BYTES_PER_PIXEL
+		# pylint: disable=no-member
 		d['message'] = self.message.format(self)
 		return d
 
-class TiledImageTooBigError(InvalidImageError):
+def num_tiles(width, height):
+	return width // WIDTH * height // HEIGHT
+
+class TiledImageTooBigError(ImageError):
 	code = 306
 	message = f'The uploaded image would exceed {MAX_DESIGN_TILES} tiles.'
 	status = HTTPStatus.REQUEST_ENTITY_TOO_LARGE
@@ -174,6 +173,7 @@ class InvalidImageArgument(ImageError):
 	http_status = HTTPStatus.BAD_REQUEST
 
 	def __init__(self, argument_name):
+		super().__init__()
 		self.argument_name = argument_name
 
 	def to_dict(self):
@@ -189,6 +189,7 @@ class InvalidLayerNameError(DesignError):
 	http_status = HTTPStatus.BAD_REQUEST
 
 	def __init__(self, design):
+		super().__init__()
 		self.valid_layer_names = list(design.external_layer_names)
 
 	def to_dict(self):
@@ -196,18 +197,20 @@ class InvalidLayerNameError(DesignError):
 		d['valid_layer_names'] = self.valid_layer_names
 		return d
 
-# TODO add which layer failed
 class InvalidLayerError(DesignError):
 	layer: 'Layer'
 	http_status = HTTPStatus.BAD_REQUEST
 
 	def __init__(self, layer):
+		super().__init__()
 		self.layer = layer
 
 	def to_dict(self):
 		d = super().to_dict()
 		d['layer_name'] = self.layer.name
 		d['layer_size'] = self.layer.size
+		# this is defined in subclasses
+		# pylint: disable=no-member
 		d['error'] = self.message.format(self)
 		return d
 
@@ -222,14 +225,14 @@ class InvalidImageError(ImageError):
 	status = HTTPStatus.BAD_REQUEST
 
 class InvalidImageIdError(ImageError, InvalidFormatError):
-	code = 311  # XXX rip my nice "x/10 = category" system
+	code = 311
 	message = 'Invalid image ID.'
-	regex = re.compile('[0-9]+')
+	regex = re.compile(r'[0-9]+')
 
 class InvalidImageDeletionToken(ImageError, InvalidFormatError):
 	code = 312
 	message = 'invalid image deletion token'
-	regex = re.compile('[a-zA-Z0-9]+')
+	regex = re.compile(r'[a-zA-Z0-9]+')
 
 class AuthorizationError(ACNHError):
 	pass

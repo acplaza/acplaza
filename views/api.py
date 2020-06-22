@@ -2,16 +2,12 @@ import contextlib
 import datetime as dt
 import io
 import json
-import re
 import urllib.parse
-from http import HTTPStatus
 
-import xbrz
 import wand.image
-from flask import Blueprint, jsonify, current_app, request, stream_with_context, url_for, abort, session
+from flask import Blueprint, jsonify, current_app, request, stream_with_context
 from werkzeug.exceptions import HTTPException
 
-import acnh.common as common
 import acnh.dodo as dodo
 import acnh.designs.api as designs_api
 import acnh.designs.render as designs_render
@@ -19,14 +15,14 @@ import acnh.designs.db as designs_db
 import utils
 import tarfile_stream
 from acnh.errors import (
-	DesignError,
 	InvalidDesignCodeError,
 	MissingLayerError,
-	InvalidLayerNameError,
 	InvalidScaleFactorError,
 	CannotScaleThumbnailError,
 	InvalidImageError,
 	InvalidImageIdError,
+	InvalidImageArgument,
+	InvalidProArgument,
 )
 from acnh.designs.encode import BasicDesign, Design
 from utils import limiter
@@ -67,10 +63,12 @@ def design_archive(design_code):
 	get_scale_factor()  # do the validation now since apparently it doesn't work in the generator
 	data = designs_api.download_design(design_code)
 	meta, body = data['mMeta'], data['mData']
+	# pylint: disable=unused-variable
 	type_code = meta['mMtUse']
 	design_name = meta['mMtDNm']  # hungarian notation + camel case + abbreviations DO NOT mix well
 
 	def gen():
+		# pylint: disable=no-member  # pylint are you drunk?
 		if type_code == BasicDesign.type_code or render_internal:
 			layers = designs_render.render_layers(body)
 		else:
@@ -110,7 +108,6 @@ def design_layer(design_code, layer):
 	InvalidDesignCodeError.validate(design_code)
 	data = designs_api.download_design(design_code)
 	meta, body = data['mMeta'], data['mData']
-	type_code = meta['mMtUse']
 	design_name = meta['mMtDNm']
 
 	if layer == 'thumbnail':
@@ -119,11 +116,11 @@ def design_layer(design_code, layer):
 		rendered = Design.from_data(data).net_image()
 	else:
 		try:
-			layer_i = int(layer)
+			int(layer)
 		except ValueError:
 			rendered = designs_render.render_layer_name(data, layer)
 		else:
-			rendered = designs_render.render_layer(body, layer_i)
+			rendered = designs_render.render_layer(body, layer)
 
 	rendered = maybe_scale(rendered)
 	out = rendered.make_blob('png')
@@ -141,7 +138,7 @@ def list_designs(author_id):
 	pro = request.args.get('pro', 'false')
 	InvalidProArgument.validate(pro)
 
-	page = designs_api.list_designs(author_id, offset=offset, limit=limit, pro=pro)
+	page = designs_api.list_designs(author_id, pro=pro)
 	page['creator_name'] = page['headers'][0]['design_player_name']
 	page['author_id'] = page['headers'][0]['design_player_id']
 
@@ -157,13 +154,13 @@ def list_designs(author_id):
 @bp.route('/images', methods=['POST'])
 @limiter.limit('1 per 15s')
 def create_image():
-	gen = format_created_design_results(_create_image())
+	gen = format_created_design_results(create_image_gen())
 	# Note: this is currently the only method (other than the rendering methods) which does *not* return JSON.
 	# This is due to its iterative nature. I considered using JSON anyway, but very few libraries
 	# support iterative JSON decoding, and we don't need anything other than an array anyway.
 	return current_app.response_class(stream_with_context(gen), mimetype='text/plain')
 
-def _create_image():
+def create_image_gen():
 	try:
 		image_name = request.values['image_name']
 	except KeyError:
@@ -220,9 +217,6 @@ def create_basic_image(image_name, author_name):
 		width, height = map(get_int_value, ('resize-width', 'resize-height'))
 	except ValueError:
 		raise InvalidImageArgument('resize')
-	else:
-		if len(resize) != 2:
-			raise InvalidImageArgument('resize')
 
 	scale = 'scale' in request.values or request.values.get('mode') == 'scale'
 
@@ -231,6 +225,7 @@ def create_basic_image(image_name, author_name):
 	except wand.image.WandException:
 		raise InvalidImageError
 	except KeyError:
+		# pylint: disable=no-member  # external_layers is defined dynamically
 		raise MissingLayerError(BasicDesign.external_layers[0])
 
 	if width is not None and not scale:
@@ -253,6 +248,7 @@ def create_basic_image(image_name, author_name):
 
 def format_created_design_results(gen, *, header=True):
 	if header:
+		# pylint: disable=stop-iteration-return  # this will never raise StopIteration
 		image_id = next(gen)
 		yield str(image_id) + '\n'
 
@@ -283,6 +279,7 @@ def image_archive(image_id):
 
 		img.import_pixels(channel_map='RGBA', data=image_blob)
 
+	# pylint: disable=not-callable
 	design = cls(layers=layers)
 	if render_internal:
 		requested_layers = enumerate(design.internalize())
@@ -309,9 +306,8 @@ def _refresh_image(image_id):
 
 @bp.route('/image/<image_id>', methods=['DELETE'])
 def delete_image(image_id):
-	token = bytes.fromhex(InvalidImageDeletionToken.validate(request.args.get('token', '')))
 	image_id = int(InvalidImageIdError.validate(image_id))
-	designs_db.delete_image(image_id, token)
+	designs_db.delete_image(image_id)
 	return jsonify('OK')
 
 @bp.errorhandler(HTTPException)

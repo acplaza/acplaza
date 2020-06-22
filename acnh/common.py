@@ -22,10 +22,7 @@
 # SOFTWARE.
 
 import contextlib
-import datetime as dt
-import enum
 import functools
-import logging
 import urllib.parse
 
 import msgpack
@@ -49,6 +46,7 @@ def init_app(app):
 	app.after_request(close_backend)
 
 # this is here to resolve circular imports
+# pylint: disable=wrong-import-position
 from utils import config
 
 SYSTEM_VERSION = 1003  # 10.0.3

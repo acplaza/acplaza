@@ -23,7 +23,7 @@ def _render_layer(raw_image, palette, layer) -> wand.image.Image:
 
 	out = io.BytesIO()
 
-	for pixi, byte in zip(range(0, WIDTH * HEIGHT, 2), layer):
+	for byte in layer:
 		b1 = byte & 0xF
 		b2 = (byte >> 4) & 0xF
 
