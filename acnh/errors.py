@@ -87,7 +87,7 @@ class InvalidScaleFactorError(InvalidFormatError):
 
 class InvalidLayerIndexError(DesignError):
 	code = 206
-	message = 'invalid image layer'
+	message = 'Invalid layer index'
 
 	def __init__(self, *, num_layers):
 		super().__init__()
@@ -97,24 +97,39 @@ class InvalidLayerIndexError(DesignError):
 		d = super().to_dict()
 		d['num_layers'] = self.num_layers
 
+class InvalidLayerNameError(DesignError):
+	code = 207
+	message = 'Invalid layer name'
+	valid_layer_names: List[str]
+	http_status = HTTPStatus.BAD_REQUEST
+
+	def __init__(self, design):
+		super().__init__()
+		self.valid_layer_names = list(design.external_layer_names)
+
+	def to_dict(self):
+		d = super().to_dict()
+		d['valid_layer_names'] = self.valid_layer_names
+		return d
+
 class InvalidProArgument(DesignError, InvalidFormatError):
 	message = 'invalid value for pro argument'
-	code = 207
+	code = 208
 	regex = re.compile(r'[01]|(?:false|true)|[ft]', re.IGNORECASE)
 
 class CannotScaleThumbnailError(DesignError):
 	message = 'cannot scale thumbnails'
-	code = 208
+	code = 209
 	http_status = HTTPStatus.BAD_REQUEST
 
 # not an invalid format error because it's not constrainable to a regex
 class InvalidDesignError(DesignError):
-	code = 209
+	code = 210
 	message = 'invalid design'
 	http_status = HTTPStatus.BAD_REQUEST
 
 class InvalidPaletteError(DesignError):
-	code = 210
+	code = 211
 	message = f'the combined palette of all layers exceeds {PALETTE_SIZE} colors'
 	http_status = HTTPStatus.BAD_REQUEST
 
@@ -185,21 +200,6 @@ class InvalidImageArgument(ImageError):
 		d = super().to_dict()
 		d['argument_name'] = self.argument_name
 		d['error'] = d['error'].format(self)
-		return d
-
-class InvalidLayerNameError(DesignError):
-	code = 308
-	message = 'Invalid image layer name.'
-	valid_layer_names: List[str]
-	http_status = HTTPStatus.BAD_REQUEST
-
-	def __init__(self, design):
-		super().__init__()
-		self.valid_layer_names = list(design.external_layer_names)
-
-	def to_dict(self):
-		d = super().to_dict()
-		d['valid_layer_names'] = self.valid_layer_names
 		return d
 
 class InvalidLayerError(DesignError):

@@ -151,11 +151,13 @@ Error code | Description
 204 | Invalid author ID
 205 | Invalid scale factor
 206 | Invalid layer index
-207 | Invalid argument for the `pro` query parameter
-208 | Cannot scale thumbnails
-209 | Invalid design (raised when Nintendo rejects an uploaded design)
-210 | Invalid palette (the image(s) uploaded were not constrained to 15 colors + transparent)
+207 | Invalid layer name
+208 | Invalid argument for the `pro` query parameter
+209 | Cannot scale thumbnails
+210 | Invalid design (raised when Nintendo rejects an uploaded design)
+211 | Invalid palette (the image(s) uploaded were not constrained to 15 colors + transparent)
 **3xx** | **Image errors**
+207 (reused) | One or more provided layer names were invalid
 301 | Unknown image ID
 302 | Invalid image ID
 303 | Image deletion denied
@@ -163,7 +165,6 @@ Error code | Description
 305 | One or more layers were of an invalid size
 306 | The uploaded image would exceed 16 tiles
 307 | A required image argument was missing or invalid
-308 | One or more layer names passed was invalid
 309 | One or more layers were missing
 310 | One or more layers were not a valid image file
 **9xx** | **General API errors**
