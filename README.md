@@ -33,7 +33,8 @@ using what is believed to be the same algorithm that the game uses.
   - `?internal`: returns the internal layers (0, 1, 2, or 3) instead of the human-friendly ones
     (e.g. 'front', 'back', 'brim').
 - /design/:custom-design-code/:layer.png
-  Returns a PNG render of the specified layer.
+  Returns a PNG render of the specified layer. This can be a human-friendly layer, an internal layer, or the special
+  `thumbnail` layer which generates a preview of the design. Thumbnails cannot be scaled.
 - /designs/:creator-id Lists the designs posted by the given creator ID. Query parameters:
   - pro: true/false. whether to list the creator's Pro designs only. If false only normal designs will be listed.
 
@@ -125,6 +126,55 @@ curl \
 - brimmed-cap: three layers: `front` (44×41), `back` (20×44), and `brim` (44×21).
 - knit-cap: one layer: `cap` (64×53)
 - brimmed-hat: three layers: `top` (36×36), `middle` (64×19), and `bottom` (64×9)
+
+## Errors
+
+Here's an example error response:
+
+```json
+{
+	"error": "invalid dodo code",
+	"error_code": 102,
+	"http_status": 400,
+	"validation_regex": "[A-HJ-NP-Y0-9]{5}"
+}
+```
+
+All error responses are guaranteed to have at least the `error`, `error_code`, and `http_status` keys, so the
+presence of these fields is a reliable indicator of an error. `error_code` is an integer where `error_code / 100`
+indicates the error category, similarly to HTTP. Unlike HTTP, `error_code % 100 == 0` is reserved for successful statuses.
+String format errors are guaranteed to have a `validation_regex` field.
+
+Error code | Description
+------------------------
+**1xx** | **Dodo Code™ errors**
+101 | Unknown Dodo Code™
+102 | Invalid Dodo Code™
+**2xx** | **Design errors**
+201 | Unknown design code
+202 | Invalid design code
+203 | Unknown author ID
+204 | Invalid author ID
+205 | Invalid scale factor
+206 | Invalid layer index
+207 | Invalid argument for the `pro` query parameter
+208 | Cannot scale thumbnails
+209 | Invalid design (raised when Nintendo rejects an uploaded design)
+210 | Invalid palette (the image(s) uploaded were not constrained to 15 colors + transparent)
+**3xx** | **Image errors**
+301 | Unknown image ID
+302 | Invalid image ID
+303 | Image deletion denied
+304 | A single layer is required, more than one was passed
+305 | One or more layers were of an invalid size
+306 | The uploaded image would exceed 16 tiles
+307 | A required image argument was missing or invalid
+308 | One or more layer names passed was invalid
+309 | One or more layers were missing
+310 | One or more layers were not a valid image file
+**9xx** | General API errors**
+901 | Missing User-Agent header
+902 | Invalid or incorrect Authorization header
 
 ## Setup
 

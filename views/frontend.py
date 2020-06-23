@@ -22,7 +22,13 @@ import utils
 from views import api
 from acnh import dodo
 from acnh.common import acnh
-from acnh.errors import ACNHError, InvalidAuthorIdError, InvalidDesignCodeError, InvalidDodoCodeError
+from acnh.errors import (
+	ACNHError,
+	InvalidAuthorIdError,
+	InvalidDesignCodeError,
+	InvalidDodoCodeError,
+	IncorrectAuthorizationError,
+)
 from acnh.designs import api as designs_api
 from acnh.designs import encode as designs_encode
 from acnh.designs import db as designs_db
@@ -282,6 +288,6 @@ def handle_acnh_exception(ex):
 def handle_http_exception(ex):
 	return render_template('error.html', message=ex.name, description=ex.get_description())
 
-@bp.errorhandler(utils.IncorrectAuthorizationError)
+@bp.errorhandler(IncorrectAuthorizationError)
 def handle_not_logged_in(ex):
 	return redirect(url_for('.login', next=ex.path))

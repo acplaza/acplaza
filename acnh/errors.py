@@ -75,44 +75,18 @@ class UnknownAuthorIdError(DesignError):
 	message = 'unknown author ID'
 	http_status = HTTPStatus.NOT_FOUND
 
-class InvalidScaleFactorError(InvalidFormatError):
-	message = 'invalid scale factor'
-	code = 204
-	regex = re.compile(r'[123456]')
-
 class InvalidAuthorIdError(DesignError, InvalidFormatError):
-	code = 205
+	code = 204
 	message = 'invalid author ID'
 	regex = re.compile(r'\d{4}-?\d{4}-?\d{4}', re.ASCII)
 
-class InvalidProArgument(DesignError, InvalidFormatError):
-	message = 'invalid value for pro argument'
+class InvalidScaleFactorError(InvalidFormatError):
+	message = 'invalid scale factor'
+	code = 205
+	regex = re.compile(r'[123456]')
+
+class InvalidLayerIndexError(DesignError):
 	code = 206
-	regex = re.compile(r'[01]|(?:false|true)|[ft]', re.IGNORECASE)
-
-# not an invalid format error because it's not constrainable to a regex
-class InvalidDesignError(DesignError):
-	code = 207
-	message = 'invalid design'
-	http_status = HTTPStatus.BAD_REQUEST
-
-class InvalidPaletteError(DesignError):
-	code = 208
-	message = f'the combined palette of all layers exceeds {PALETTE_SIZE} colors'
-	http_status = HTTPStatus.BAD_REQUEST
-
-class CannotScaleThumbnailError(DesignError):
-	message = 'cannot scale thumbnails'
-	code = 209
-	http_status = HTTPStatus.BAD_REQUEST
-
-class UnknownImageIdError(ImageError):
-	code = 301
-	message = 'unknown image ID'
-	http_status = HTTPStatus.NOT_FOUND
-
-class InvalidLayerIndexError(ACNHError):
-	code = 302
 	message = 'invalid image layer'
 
 	def __init__(self, *, num_layers):
@@ -123,6 +97,37 @@ class InvalidLayerIndexError(ACNHError):
 		d = super().to_dict()
 		d['num_layers'] = self.num_layers
 
+class InvalidProArgument(DesignError, InvalidFormatError):
+	message = 'invalid value for pro argument'
+	code = 207
+	regex = re.compile(r'[01]|(?:false|true)|[ft]', re.IGNORECASE)
+
+class CannotScaleThumbnailError(DesignError):
+	message = 'cannot scale thumbnails'
+	code = 208
+	http_status = HTTPStatus.BAD_REQUEST
+
+# not an invalid format error because it's not constrainable to a regex
+class InvalidDesignError(DesignError):
+	code = 209
+	message = 'invalid design'
+	http_status = HTTPStatus.BAD_REQUEST
+
+class InvalidPaletteError(DesignError):
+	code = 210
+	message = f'the combined palette of all layers exceeds {PALETTE_SIZE} colors'
+	http_status = HTTPStatus.BAD_REQUEST
+
+class UnknownImageIdError(ImageError):
+	code = 301
+	message = 'unknown image ID'
+	http_status = HTTPStatus.NOT_FOUND
+
+class InvalidImageIdError(ImageError, InvalidFormatError):
+	code = 302
+	message = 'Invalid image ID.'
+	regex = re.compile(r'[0-9]+')
+
 class DeletionDeniedError(ImageError):
 	code = 303
 	message = 'you do not own this image'
@@ -132,7 +137,7 @@ class SingleLayerRequired(ImageError):
 	code = 304
 	message = (
 		'A single layer was required, but more than one was passed. '
-		'If tiling was requested, do not pass multiple layers.'
+		'If creating a basic design, do not pass multiple layers.'
 	)
 
 class InvalidLayerSizeError(ImageError):
@@ -223,16 +228,6 @@ class InvalidImageError(ImageError):
 	code = 310
 	message = 'One or more layers submitted represented an invalid image.'
 	status = HTTPStatus.BAD_REQUEST
-
-class InvalidImageIdError(ImageError, InvalidFormatError):
-	code = 311
-	message = 'Invalid image ID.'
-	regex = re.compile(r'[0-9]+')
-
-class InvalidImageDeletionToken(ImageError, InvalidFormatError):
-	code = 312
-	message = 'invalid image deletion token'
-	regex = re.compile(r'[a-zA-Z0-9]+')
 
 class AuthorizationError(ACNHError):
 	pass
