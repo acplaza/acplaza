@@ -5,10 +5,10 @@ My instance is available at:
 - https://acplaza.app
 - http://acnhok4pb2e6jwy2khjollqznnkrqxpt5toaknjrqdfeqir3iqhyl6ad.onion/
 
-This API requires paid authorization.
+This site requires paid authorization.
 If you would like access, please [subscribe on Patreon](https://patreon.com/iomintz) for at least $5 / month.
-After you pay I will message you a token via Patreon. Send this token as the value of the `Authorization` header
-in all requests.
+After you pay I will message you a token via Patreon. Use it to log in on the web frontend,
+or send it as the value of the `Authorization` header in all requests.
 
 ## Endpoints
 
