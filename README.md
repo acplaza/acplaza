@@ -79,12 +79,10 @@ one or more in-game designs.
 	},
 	"designs": [
 		{
-			"design_id": 337936614208352244,
 			"design_code": "M28X-QT1R-HM4S",
 			"position": 2
 		},
 		{
-			"design_id": 338686262569391946,
 			"design_code": "M3K1-B98K-86L6",
 			"position": 3
 		}
