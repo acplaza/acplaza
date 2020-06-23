@@ -24,8 +24,8 @@
 	{% endif %}
 	<h2>Active design codes</h2>
 	<ol>
-		{% for design in designs %}
-			<li value="{{ design.position }}">{{ design.design_code }}
+		{% for position, design_code in designs.items() %}
+			<li value="{{ position }}">{{ design_code }}
 		{% endfor %}
 	</ol>
 {% endblock %}

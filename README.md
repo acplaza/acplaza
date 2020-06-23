@@ -77,18 +77,14 @@ one or more in-game designs.
 		"pro": false,
 		"design_type": "basic-design"
 	},
-	"designs": [
-		{
-			"design_code": "M28X-QT1R-HM4S",
-			"position": 2
-		},
-		{
-			"design_code": "M3K1-B98K-86L6",
-			"position": 3
-		}
-	]
+	"designs": {
+		"2": "M28X-QT1R-HM4S",
+		"3": "M3K1-B98K-86L6"
+	}
 }
 ```
+
+The `designs` object maps positions (starting at 1) to design codes. If any are missing, the image can be refreshed.
 
 - POST /image/:image-id/refresh
   If some of the designs for an image were deleted to save space, this endpoint will re-create them, and

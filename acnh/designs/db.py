@@ -182,14 +182,10 @@ def image(image_id):
 	image = dict(rows[0])
 	# these are design fields not image fields
 	del image['design_id'], image['position']
-	designs = []
+	designs = {}
 	for row in rows:
 		if row['design_id'] is None:
 			break
+		designs[row['position']] = api.design_code(row['design_id'])
 
-		design = {}
-		designs.append(design)
-		design['design_id'] = row['design_id']
-		design['design_code'] = api.design_code(row['design_id'])
-		design['position'] = row['position']
 	return {'image': image, 'designs': designs}

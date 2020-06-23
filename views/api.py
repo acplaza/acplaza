@@ -265,8 +265,6 @@ def image(image_id):
 	# images are meant to be anonymous, with the author identified solely by their chosen name
 	del rv['image']['author_id']
 	rv['image']['design_type'] = Design(rv['image'].pop('type_code')).name
-	for design in rv['designs']:
-		del design['design_id']
 	return rv
 
 @bp.route('/image/<image_id>.tar')
