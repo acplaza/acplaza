@@ -172,7 +172,7 @@ Error code | Description
 308 | One or more layer names passed was invalid
 309 | One or more layers were missing
 310 | One or more layers were not a valid image file
-**9xx** | General API errors**
+**9xx** | **General API errors**
 901 | Missing User-Agent header
 902 | Invalid or incorrect Authorization header
 
