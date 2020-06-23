@@ -146,7 +146,7 @@ indicates the error category, similarly to HTTP. Unlike HTTP, `error_code % 100 
 String format errors are guaranteed to have a `validation_regex` field.
 
 Error code | Description
-------------------------
+---------- | -----------
 **1xx** | **Dodo Code™ errors**
 101 | Unknown Dodo Code™
 102 | Invalid Dodo Code™
