@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 # © 2020 io mintz <io@mintz.cc>
 
+from glob import glob
+
 from flask import Flask
 
 import utils
@@ -15,4 +17,4 @@ views.frontend.init_app(app)
 views.api.init_app(app)
 
 if __name__ == '__main__':
-	app.run(use_reloader=True)
+	app.run(use_reloader=True, extra_files=glob('templates/**.html', recursive=True) + ['queries.sql'])
