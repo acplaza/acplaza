@@ -10,7 +10,7 @@ from flask import request
 
 from . import api, encode
 from .format import SIZE
-from utils import pg, queries, config
+from utils import pg, queries
 from ..errors import UnknownImageIdError, DeletionDeniedError, TiledImageTooBigError, num_tiles
 
 ISLAND_NAMES = [
@@ -118,7 +118,7 @@ def create_designs(image_id, design, images, *, tile: bool):
 def get_images(image, *, scale: bool):
 	if image.size > SIZE and not scale:
 		TiledImageTooBigError.validate(image)
-		return encode.tile(image)
+		return list(encode.tile(image))
 
 	# scale if necessary
 	return [image.clone()]
