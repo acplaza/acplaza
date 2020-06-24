@@ -350,8 +350,6 @@ class LongSleeveMixin:
 		net_img.composite(left_sleeve, 141, 157)
 		return net_img
 
-# bruh we composing functions via multiple inheritance
-# feels good
 class LongSleeveDressShirt(LongSleeveMixin, StandardBodyMixin, Design):
 	type_code = 100
 	display_name = 'Long-sleeve dress shirt'
