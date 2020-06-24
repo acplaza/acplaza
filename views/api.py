@@ -24,6 +24,7 @@ from acnh.errors import (
 	InvalidImageArgument,
 	InvalidProArgument,
 	InvalidAuthorIdError,
+	TiledImageTooBigError,
 )
 from acnh.designs.encode import BasicDesign, Design
 from utils import limiter
@@ -235,7 +236,7 @@ def create_basic_image(image_name, author_name):
 	if width is not None and not scale:
 		img.transform(resize=f'{width}x{height}')
 	# do this again now because custom exception handlers don't run for generators ¯\_(ツ)_/¯
-	designs_db.TiledImageTooBigError.validate(img)
+	TiledImageTooBigError.validate(img)
 
 	design = BasicDesign(
 		island_name=designs_db.island_name(),
