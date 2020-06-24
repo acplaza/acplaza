@@ -1,5 +1,28 @@
 -- #region Designs
 
+-- :macro images_keyset(sort_order, end=false)
+-- params: limit[, image_id]
+SELECT
+	image_id,
+	author_id,
+	author_name,
+	image_name,
+	created_at,
+	width,
+	height,
+	mode,
+	-- skip layers
+	pro,
+	designs_required,
+	type_code
+FROM images
+-- :if sort_order is defined and not end
+	WHERE image_id {{ '>' if sort_order == 'ASC' else '<' }} $2
+-- :endif
+ORDER BY image_id {{ sort_order }}
+LIMIT $1
+-- :endmacro
+
 -- :macro design_image()
 -- params: design_id
 SELECT image_id, designs_required

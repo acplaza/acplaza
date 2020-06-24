@@ -222,7 +222,19 @@ class MissingLayerError(InvalidLayerError):
 class InvalidImageError(ImageError):
 	code = 310
 	message = 'One or more layers submitted represented an invalid image.'
-	status = HTTPStatus.BAD_REQUEST
+	http_status = HTTPStatus.BAD_REQUEST
+
+class InvalidPaginationError(ACNHError):
+	http_status = HTTPStatus.BAD_REQUEST
+
+class TwoPaginationReferencesPassedError(ACNHError):
+	code = 401
+	message = 'Only one of "before" or "after" may be specified.'
+
+class InvalidPaginationLimitError(InvalidFormatError, InvalidPaginationError):
+	code = 402
+	message = 'Invalid limit passed'
+	regex = re.compile('[0-9]+')
 
 class AuthorizationError(ACNHError):
 	pass

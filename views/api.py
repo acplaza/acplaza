@@ -25,7 +25,10 @@ from acnh.errors import (
 	InvalidProArgument,
 	InvalidAuthorIdError,
 	TiledImageTooBigError,
+	InvalidPaginationError,
+	InvalidPaginationLimitError,
 )
+from acnh.designs.db import PageSpecifier, PageDirection
 from acnh.designs.encode import BasicDesign, Design
 from utils import limiter
 
@@ -259,6 +262,45 @@ def format_created_design_results(gen, *, header=True):
 
 	for was_quantized, design_id in gen:
 		yield f'{int(was_quantized)},{designs_api.design_code(design_id)}\n'
+
+@bp.route('/images')
+def images():
+	page = parse_keyset_params()
+	rv = designs_db.images_keyset(page)
+	for i, image_info in enumerate(rv):
+		rv[i] = image_info = dict(rv[i])
+		# images are meant to be anonymous, with the author identified solely by their chosen name
+		del image_info['author_id']
+		image_info['design_type'] = Design(image_info.pop('type_code')).name
+	return jsonify(rv)
+
+def parse_keyset_params():
+	# before='' means last
+	# after='' means first
+	before = request.args.get('before')
+	after = request.args.get('after')
+	limit = request.args.get('limit')
+	if limit is not None:
+		limit = int(InvalidPaginationLimitError.validate(limit))
+
+	if before is None and after is None:
+		# default to first page
+		return PageSpecifier.first()
+
+	if before is not None and after is not None:
+		raise TwoPaginationReferencesPassedError
+
+	if not before and not after:
+		reference = None
+	else:
+		reference = int(InvalidImageIdError.validate(before or after))
+
+	if before is not None:
+		direction = PageDirection.before
+	elif after is not None:
+		direction = PageDirection.after
+
+	return PageSpecifier(direction, reference, limit)
 
 @bp.route('/image/<image_id>')
 def image(image_id):
