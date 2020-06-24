@@ -165,7 +165,7 @@ class InvalidLayerSizeError(ImageError):
 		d['expected_height'] = self.height
 		d['expected_byte_length'] = self.width * self.height * BYTES_PER_PIXEL
 		# pylint: disable=no-member
-		d['message'] = self.message.format(self)
+		d['error'] = d['error'].format(self)
 		return d
 
 def num_tiles(width, height):
