@@ -3,6 +3,7 @@
 import operator
 import urllib.parse
 from http import HTTPStatus
+from functools import wraps
 from typing import Union
 
 import msgpack
@@ -47,16 +48,24 @@ def merge_headers(data, headers):
 	data['created_at'] = headers['created_at']
 	data['updated_at'] = headers['updated_at']
 
-def download_design(design_id_or_code: DesignId, partial=False):
-	if isinstance(design_id_or_code, str):
-		design_id_ = design_id(InvalidDesignCodeError.validate(design_id_or_code))
-	else:
-		design_id_ = design_id_or_code
+def accepts_design_id(func):
+	@wraps(func)
+	def wrapped(design_id_or_code: DesignId, *args, **kwargs):
+		if isinstance(design_id_or_code, str):
+			design_id_ = design_id(InvalidDesignCodeError.validate(design_id_or_code))
+		else:
+			design_id_ = design_id_or_code
 
+		return func(design_id_, *args, **kwargs)
+
+	return wrapped
+
+@accepts_design_id
+def download_design(design_id, partial=False):
 	resp = acnh().request('GET', '/api/v2/designs', params={
 		'offset': 0,
 		'limit': 1,
-		'q[design_id]': design_id_,
+		'q[design_id]': design_id,
 	})
 	resp.raise_for_status()
 	resp = msgpack.loads(resp.content)
@@ -94,13 +103,9 @@ def stale_designs(needed, *, pro: bool):
 		return []
 	return sorted(r['headers'], key=operator.itemgetter('created_at'))[:free_slots - needed]
 
-def delete_design(design_id_or_code) -> None:
-	if isinstance(design_id_or_code, str):
-		design_id_ = design_id(InvalidDesignCodeError.validate(design_id_or_code))
-	else:
-		design_id_ = design_id_or_code
-
-	resp = acnh().request('DELETE', '/api/v1/designs/' + str(design_id_))
+@accepts_design_id
+def delete_design(design_id) -> None:
+	resp = acnh().request('DELETE', f'/api/v1/designs/{design_id}')
 	if resp.status_code == HTTPStatus.NOT_FOUND:
 		raise UnknownDesignCodeError
 
