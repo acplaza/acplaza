@@ -8,6 +8,9 @@
 {% block content %}
 	<p>{{ design_type }}</p>
 	<nav><ul>
+		{% if image_id %}
+			<li>This in-game design is part of a tiled design. <a href="/image/{{ image_id }}">View the overall design.</a>
+		{% endif %}
 		<li><a href="/designs/{{ pretty_author_id }}">More designs by {{ author_name }}</a>
 		<li><a href="/design/{{ design_code }}.tar">Download all layers</a>
 	</ul></nav>

@@ -129,7 +129,7 @@ bp.route('/image/<image_id>.tar')(api.image_archive)
 @limiter.limit('2 per 10 seconds')
 def design(design_code):
 	image_info = designs_db.design_image(design_code)
-	if image_info['designs_required'] == 1:
+	if image_info and image_info['designs_required'] == 1:
 		return redirect(url_for('.image', image_id=image_info['image_id']))
 
 	data = designs_api.download_design(design_code)
@@ -148,6 +148,7 @@ def design(design_code):
 	return utils.stream_template(
 		'design.html',
 		created_at=dt.datetime.utcfromtimestamp(data['created_at']),
+		image_id=image_info and image_info['image_id'],
 		author_name=data['author_name'],
 		author_id=data['author_id'],
 		pretty_author_id=designs_api.add_hyphens(str(data['author_id'])),
