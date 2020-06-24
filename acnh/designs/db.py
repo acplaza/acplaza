@@ -187,3 +187,7 @@ def image(image_id):
 		designs[row['position']] = api.design_code(row['design_id'])
 
 	return {'image': image, 'designs': designs}
+
+@api.accepts_design_id
+def design_image(design_id):
+	return pg().fetchrow(queries.design_image(), design_id)

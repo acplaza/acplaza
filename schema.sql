@@ -20,6 +20,11 @@ CREATE TABLE images (
 	mode image_mode,
 	layers BYTEA[] NOT NULL,
 	pro BOOLEAN GENERATED ALWAYS AS (array_length(layers, 1) > 1) STORED,
+	designs_required SMALLINT GENERATED ALWAYS AS (
+		CASE WHEN array_length(layers, 1) > 1 OR mode = 'scale' OR (width = 32 AND height = 32) THEN 1
+		ELSE width / 32 * height / 32
+		END
+	) STORED,
 
 	type_code SMALLINT NOT NULL,
 

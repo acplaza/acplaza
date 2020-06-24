@@ -128,6 +128,10 @@ bp.route('/image/<image_id>.tar')(api.image_archive)
 @bp.route('/design/<design_code>')
 @limiter.limit('2 per 10 seconds')
 def design(design_code):
+	image_info = designs_db.design_image(design_code)
+	if image_info['designs_required'] == 1:
+		return redirect(url_for('.image', image_id=image_info['image_id']))
+
 	data = designs_api.download_design(design_code)
 	meta = data['mMeta']
 	design_name = meta['mMtDNm']
@@ -253,15 +257,15 @@ def image(image_id):
 	else:
 		img = wand.image.Image(width=image_info['width'], height=image_info['height'])
 		img.import_pixels(data=image_info['layers'][0], channel_map='RGBA')
+		if image_info['designs_required'] == 1:
+			img = utils.xbrz_scale_wand_in_subprocess(img, 6)
 		# pylint: disable=not-callable
 		design = cls(**cls_kwargs, layers={'0': img})
 		layers = [('0', utils.image_to_base64_url(img))]
 
-	required_design_count = 1 if image_info['pro'] else designs_db.num_tiles(img.width, img.height)
-
 	return render_template(
 		'image.html',
-		image=image_info, design=design, layers=layers, designs=designs, required_design_count=required_design_count,
+		image=image_info, design=design, layers=layers, designs=designs,
 		design_type=cls.display_name,
 		preview=utils.image_to_base64_url(design.net_image()) if image_info['pro'] else None,
 	)

@@ -1,5 +1,12 @@
 -- #region Designs
 
+-- :macro design_image()
+-- params: design_id
+SELECT image_id, designs_required
+FROM designs INNER JOIN images USING (image_id)
+WHERE design_id = $1
+-- :endmacro
+
 -- :macro delete_design()
 -- params: design_id
 DELETE FROM designs
@@ -65,6 +72,7 @@ SELECT
 	mode,
 	layers,
 	images.pro,
+	designs_required,
 	type_code,
 	design_id,
 	position

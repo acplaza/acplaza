@@ -15,13 +15,16 @@
 			</form>
 		</nav>
 	{% endif %}
+	{% if image.designs_required == 1 %}
+		<a href="/design/{{ designs['0'] }}.tar">Download all layers</a><br>
+	{% endif %}
 	{% if preview %}
 		<img src="{{ preview }}"><br>
 	{% endif %}
 	{% for name, url in layers %}
 		<img alt="{{ name }}" title="{{ name }}" src="{{ url }}">
 	{% endfor %}
-	{% if designs|length < required_design_count %}
+	{% if designs|length < image.designs_required %}
 		<p>
 			Some in-game designs have been deleted to save space.
 			<a href="/refresh-image/{{ image.image_id }}">Recreate them</a>
