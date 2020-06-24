@@ -18,7 +18,7 @@ class ACNHError(Exception):
 		return self.code
 
 	def to_dict(self):
-		return {'error': self.message, 'error_code': self.code, 'http_status': self.http_status}
+		return {'error': self.message.format(self), 'error_code': self.code, 'http_status': self.http_status}
 
 class InvalidFormatError(ACNHError):
 	http_status = HTTPStatus.BAD_REQUEST
@@ -164,8 +164,6 @@ class InvalidLayerSizeError(ImageError):
 		d['expected_width'] = self.width
 		d['expected_height'] = self.height
 		d['expected_byte_length'] = self.width * self.height * BYTES_PER_PIXEL
-		# pylint: disable=no-member
-		d['error'] = d['error'].format(self)
 		return d
 
 def num_tiles(width, height):
@@ -173,13 +171,20 @@ def num_tiles(width, height):
 
 class TiledImageTooBigError(ImageError):
 	code = 306
-	message = f'The uploaded image would exceed {MAX_DESIGN_TILES} tiles.'
-	status = HTTPStatus.REQUEST_ENTITY_TOO_LARGE
+	message = (
+		f'The uploaded image would create {{.num_tiles}} tiles, which is greater than the limit, {MAX_DESIGN_TILES}.'
+	)
+	http_status = HTTPStatus.REQUEST_ENTITY_TOO_LARGE
+
+	def __init__(self, img):
+		super().__init__()
+		self.num_tiles = num_tiles(*img.size)
 
 	@classmethod
 	def validate(cls, img):
-		if num_tiles(img.width, img.height) > MAX_DESIGN_TILES:
-			raise cls
+		ex = cls(img)
+		if ex.num_tiles > MAX_DESIGN_TILES:
+			raise ex
 
 class InvalidImageArgument(ImageError):
 	code = 307
@@ -193,7 +198,6 @@ class InvalidImageArgument(ImageError):
 	def to_dict(self):
 		d = super().to_dict()
 		d['argument_name'] = self.argument_name
-		d['error'] = d['error'].format(self)
 		return d
 
 class InvalidLayerError(DesignError):
@@ -208,9 +212,6 @@ class InvalidLayerError(DesignError):
 		d = super().to_dict()
 		d['layer_name'] = self.layer.name
 		d['layer_size'] = self.layer.size
-		# this is defined in subclasses
-		# pylint: disable=no-member
-		d['error'] = self.message.format(self)
 		return d
 
 class MissingLayerError(InvalidLayerError):
