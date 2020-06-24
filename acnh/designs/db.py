@@ -27,7 +27,6 @@ def garbage_collect_designs(needed_slots: int, *, pro: bool):
 	if not design_ids:
 		return
 
-	print('deleting', len(design_ids))
 	for design_id in design_ids:
 		api.delete_design(design_id)
 
