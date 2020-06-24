@@ -93,6 +93,7 @@ def create_basic_design(design, *, scale: bool):
 		[bytearray(image.export_pixels())],
 	)
 	yield image_id
+	# backwards so that the first image shows up first in game
 	images = list(zip(reversed(range(1, len(images) + 1)), reversed(images)))
 	yield from create_designs(image_id, design, images, tile=not scale)
 
@@ -118,8 +119,7 @@ def create_designs(image_id, design, images, *, tile: bool):
 def get_images(image, *, scale: bool):
 	if image.size > SIZE and not scale:
 		TiledImageTooBigError.validate(image)
-		# backwards so that the first image shows up first in game
-		return list(encode.tile(image.clone()))[::-1]
+		return encode.tile(image)
 
 	# scale if necessary
 	return [image.clone()]
