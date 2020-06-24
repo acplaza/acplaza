@@ -54,6 +54,8 @@ def create_image(design, **kwargs):
 
 def create_pro_design(design):
 	"""Upload a pro design. Returns an iterable for consistency with create_basic_design."""
+	was_quantized, encoded = encode.encode(design)
+	garbage_collect_designs(1, pro=True)
 	image_id = pg().fetchval(
 		queries.create_image(),
 
@@ -66,8 +68,6 @@ def create_pro_design(design):
 		design.type_code,
 		[bytearray(image.export_pixels()) for image in design.layer_images.values()],
 	)
-	garbage_collect_designs(1, pro=True)
-	was_quantized, encoded = encode.encode(design)
 	design_id = api.create_design(encoded)
 	create_design(image_id=image_id, design_id=design_id, position=1, pro=True)
 	yield image_id
