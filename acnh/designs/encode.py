@@ -323,6 +323,7 @@ class ShortSleeveMixin:
 		left_sleeve = self.layer_images['left-sleeve'].clone()
 		left_sleeve.scale(72, 44)
 		net_img.composite(left_sleeve, 141, 157)
+		net_img.composite(self.net_image_mask, 0, 0)
 		return net_img
 
 # multiple inheritance as function composition 😎
@@ -334,11 +335,6 @@ class ShortSleeveTee(ShortSleeveMixin, StandardBodyMixin, Design):
 	internal_layers = Layer * 4
 	correspondence = STANDARD_BODY_CORRESPONDENCE + SHORT_SLEEVE_CORRESPONDENCE
 
-	def net_image(self):
-		net_img = super().net_image()
-		net_img.composite(self.net_image_mask, 0, 0)
-		return net_img
-
 class LongSleeveMixin:
 	def net_image(self):
 		net_img = super().net_image()
@@ -348,6 +344,7 @@ class LongSleeveMixin:
 		left_sleeve = self.layer_images['left-sleeve'].clone()
 		left_sleeve.scale(72, 77)
 		net_img.composite(left_sleeve, 141, 157)
+		net_img.composite(self.net_image_mask, 0, 0)
 		return net_img
 
 class LongSleeveDressShirt(LongSleeveMixin, StandardBodyMixin, Design):
@@ -357,11 +354,6 @@ class LongSleeveDressShirt(LongSleeveMixin, StandardBodyMixin, Design):
 	external_layers = STANDARD_BODY_LAYERS + LONG_SLEEVE_LAYERS
 	internal_layers = Layer * 4
 	correspondence = STANDARD_BODY_CORRESPONDENCE + LONG_SLEEVE_CORRESPONDENCE
-
-	def net_image(self):
-		net_img = super().net_image()
-		net_img.composite(self.net_image_mask, 0, 0)
-		return net_img
 
 class Sweater(LongSleeveDressShirt):
 	type_code = 103
@@ -399,11 +391,6 @@ class Coat(LongSleeveMixin, LongBodyMixin, Design):
 	category = 'Tops'
 	external_layers = LONG_BODY_LAYERS + LONG_SLEEVE_LAYERS
 	correspondence = LONG_BODY_CORRESPONDENCE + LONG_SLEEVE_CORRESPONDENCE
-
-	def net_image(self):
-		net_img = super().net_image()
-		net_img.composite(self.net_image_mask, 0, 0)
-		return net_img
 
 class ShortSleeveDress(ShortSleeveMixin, LongBodyMixin, Design):
 	type_code = 106
