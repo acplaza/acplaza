@@ -161,7 +161,7 @@ Error code | Description
 301 | Unknown image ID
 302 | Invalid image ID
 303 | Image deletion denied
-304 | A single layer is required, more than one was passed
+304 | *Unused*
 305 | One or more layers were of an invalid size
 306 | The uploaded image would exceed 16 tiles
 307 | A required image argument was missing or invalid

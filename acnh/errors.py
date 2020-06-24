@@ -148,13 +148,6 @@ class DeletionDeniedError(ImageError):
 	message = 'you do not own this image'
 	http_status = HTTPStatus.UNAUTHORIZED
 
-class SingleLayerRequired(ImageError):
-	code = 304
-	message = (
-		'A single layer was required, but more than one was passed. '
-		'If creating a basic design, do not pass multiple layers.'
-	)
-
 class InvalidLayerSizeError(ImageError):
 	code = 305
 	message = 'layer {0.name} was not {0.width}×{0.height}.'
