@@ -325,6 +325,7 @@ class ShortSleeveMixin:
 		net_img.composite(left_sleeve, 141, 157)
 		return net_img
 
+# multiple inheritance as function composition 😎
 class ShortSleeveTee(ShortSleeveMixin, StandardBodyMixin, Design):
 	type_code = 101
 	display_name = 'Short-sleeve tee'
