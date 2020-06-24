@@ -151,7 +151,7 @@ class DeletionDeniedError(ImageError):
 class InvalidLayerSizeError(ImageError):
 	code = 305
 	message = 'layer {0.name} was not {0.width}×{0.height}.'
-	http_status = HTTP_STATUS.BAD_REQUEST
+	http_status = HTTPStatus.BAD_REQUEST
 
 	def __init__(self, name, width, height):
 		super().__init__()
