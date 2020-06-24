@@ -1,9 +1,14 @@
 {% extends 'base.html' %}
-{% block title %}{{ design_name }} by {{ author_name }} from {{ island_name }}{% endblock %}
+{% block title %}
+	{{ design_name }}
+	{% if author_id != api_author_id %}
+		by {{ author_name }} from {{ island_name }}
+	{% endif %}
+{% endblock %}
 {% block content %}
 	<p>{{ design_type }}</p>
 	<nav><ul>
-		<li><a href="/designs/{{ author_id }}">More designs by {{ author_name }}</a>
+		<li><a href="/designs/{{ pretty_author_id }}">More designs by {{ author_name }}</a>
 		<li><a href="/design/{{ design_code }}.tar">Download all layers</a>
 	</ul></nav>
 	{# TODO add created_at in user's time zone #}

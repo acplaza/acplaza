@@ -36,6 +36,7 @@ from utils import limiter
 
 def init_app(app):
 	app.register_blueprint(bp)
+	app.add_template_global(utils.config['acnh-design-creator-id'], name='api_author_id')
 
 bp = Blueprint('frontend', __name__)
 
@@ -144,7 +145,8 @@ def design(design_code):
 		'design.html',
 		created_at=dt.datetime.utcfromtimestamp(data['created_at']),
 		author_name=data['author_name'],
-		author_id=designs_api.add_hyphens(str(data['author_id'])),
+		author_id=data['author_id'],
+		pretty_author_id=designs_api.add_hyphens(str(data['author_id'])),
 		design_code=design_code,
 		design_name=design_name,
 		design_type=type(design).display_name,
@@ -259,7 +261,7 @@ def image(image_id):
 
 	return render_template(
 		'image.html',
-		image=image, design=design, layers=layers, designs=designs, required_design_count=required_design_count,
+		image=image_info, design=design, layers=layers, designs=designs, required_design_count=required_design_count,
 		design_type=cls.display_name,
 		preview=utils.image_to_base64_url(design.net_image()) if image_info['pro'] else None,
 	)

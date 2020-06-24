@@ -1,5 +1,10 @@
 {% extends 'base.html' %}
-{% block title %}{{ image.image_name }}{{ image.author_name if image.author_name != 'Anonymous' }}{% endblock %}
+{% block title %}
+	{{ image.image_name }}
+	{% if image.author_name != 'Anonymous' %}
+		by {{ image.author_name }}
+	{% endif %}
+{% endblock %}
 {% block content %}
 	<p>{{ design_type }}</p>
 	{% if session.user_id == image.author_id %}
