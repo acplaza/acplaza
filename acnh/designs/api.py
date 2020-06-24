@@ -1,11 +1,13 @@
 # © 2020 io mintz <io@mintz.cc>
 
+import operator
 import urllib.parse
 from http import HTTPStatus
 from typing import Union
 
 import msgpack
 
+from utils import config
 from .. import utils
 from ..common import acnh
 from ..errors import (
@@ -16,6 +18,7 @@ from ..errors import (
 
 DesignId = Union[str, int]
 
+MAX_DESIGNS = 120
 DESIGN_CODE_ALPHABET = InvalidDesignCodeError.DESIGN_CODE_ALPHABET
 DESIGN_CODE_ALPHABET_VALUES = InvalidDesignCodeError.DESIGN_CODE_ALPHABET_VALUES
 
@@ -83,6 +86,13 @@ def list_designs(author_id: int, *, pro: bool, with_binaries: bool = False):
 	resp.raise_for_status()
 	resp = msgpack.loads(resp.content)
 	return resp
+
+def stale_designs(needed, *, pro: bool):
+	r = list_designs(config['acnh-design-creator-id'], pro=pro)
+	free_slots = MAX_DESIGNS - r['count']
+	if free_slots >= needed:
+		return []
+	return sorted(r['headers'], key=operator.itemgetter('created_at'))[:free_slots - needed]
 
 def delete_design(design_id_or_code) -> None:
 	if isinstance(design_id_or_code, str):

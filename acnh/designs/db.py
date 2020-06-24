@@ -10,7 +10,7 @@ from flask import request
 
 from . import api, encode
 from .format import SIZE
-from utils import pg, queries
+from utils import pg, queries, config
 from ..errors import UnknownImageIdError, DeletionDeniedError, TiledImageTooBigError, num_tiles
 
 ISLAND_NAMES = [
@@ -23,19 +23,17 @@ island_name = partial(random.choice, ISLAND_NAMES)
 
 def garbage_collect_designs(needed_slots: int, *, pro: bool):
 	"""Free at least needed_slots. Pass pro depending on whether Pro slots are needed."""
-	design_ids = pg().fetchvals(queries.stale_designs(), pro, needed_slots)
+	design_ids = [hdr['id'] for hdr in api.stale_designs(needed_slots, pro=pro)]
+	if not design_ids:
+		return
+
+	print('deleting', len(design_ids))
 	for design_id in design_ids:
-		try:
-			api.delete_design(design_id)
-		except api.UnknownDesignCodeError:
-			print(
-				'Design ID:',
-				design_id,
-				'code:',
-				api.design_code(design_id),
-				'found in the database but not in the slots! Ignoring.',
-			)
-	pg().execute(queries.delete_designs(), design_ids)
+		api.delete_design(design_id)
+
+	tag = pg().execute(queries.delete_designs(), design_ids)
+	if tag != f'DELETE {len(design_ids)}':
+		print('One or more stale design IDs were found in the API but not in the database! Ignoring…')
 
 def delete_image(image_id):
 	image_author_id = pg().fetchval(queries.image_author_id(), image_id)
@@ -99,6 +97,7 @@ def create_basic_design(design, *, scale: bool):
 	yield from create_designs(image_id, design, images, tile=not scale)
 
 def create_designs(image_id, design, images, *, tile: bool):
+	garbage_collect_designs(len(images), pro=False)
 	for count, (i, image) in enumerate(images, 1):
 		design_name = f'{design.design_name} {i}' if tile else design.design_name
 		sub_design = encode.BasicDesign(

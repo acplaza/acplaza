@@ -1,22 +1,5 @@
 -- #region Designs
 
--- :set MAX_DESIGNS = 120
-
--- :macro stale_designs()
--- params: pro, n
-WITH slots_needed AS (
-	SELECT {{ MAX_DESIGNS }} - (COUNT(designs) FILTER (WHERE pro = $1)) < $2
-	FROM designs
-)
-SELECT design_id
-FROM designs
-WHERE
-	pro = $1
-	AND (SELECT * FROM slots_needed)
-ORDER BY created_at
-LIMIT $2
--- :endmacro
-
 -- :macro delete_design()
 -- params: design_id
 DELETE FROM designs
