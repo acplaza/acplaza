@@ -59,5 +59,5 @@ def search_dodo_code(dodo_code: str):
 		active_players=session.player_count,
 		name=data[12:32].decode('utf-16').rstrip('\0'),
 		host=data[40:60].decode('utf-16').rstrip('\0'),
-		start_time=dt.datetime.fromtimestamp(session.started_time.timestamp()),
+		start_time=session.started_time.to_standard_datetime(),
 	)
