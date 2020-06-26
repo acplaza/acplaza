@@ -1,64 +1,73 @@
 {% extends 'base.html' %}
 {% block title %}Create a design{% endblock %}
+{% block head %}
+	{{ super() }}
+	<link rel=stylesheet href="/static/css/design_form.css">
+{% endblock %}
 {% block content %}
-	<style>
-		#resize-group {
-			display: none;
-		}
-		.required::after {
-			color: red;
-			content: ' *';
-		}
-		/* copied from milligram's label styles */
-		.form-question {
-			display: block;
-			font-size: 1.6rem;
-			font-weight: 700;
-			margin-bottom: .5rem;
-		}
-		#x {
-			font-size: 3.2rem;
-			font-weight: 700;
-		}
-	</style>
+	<div id=errors></div>
 	<form method=post enctype="multipart/form-data">
 		<fieldset>
 			<input type=hidden name=csrf_token value="{{ csrf_token() }}">
-			<input type=hidden name=design_type value="basic-design">
+			<input type=hidden name=design_type value=basic-design>
 			<label class=required for=file>Pick an image</label>
 			<input type=file id=file name=0 required>
-			<label class=required for=image_name>Name</label>
-			<input type=text name=image_name id=image_name maxlength=20 required>
-			<label for=author_name>Author name</label>
-			<input type=text name=author_name id=author_name maxlength=20 placeholder="Anonymous">
-			<div class="required form-question">Would you like to create one design or split it up and tile it?</div>
 			<div>
-				<input type=radio id=scale name=mode value=scale checked required>
-				<label class=label-inline for=scale>Scale</label>
+			<div class=row>
+				<div class="column column-25">
+					<label class=required for=image_name>Name</label>
+					<input type=text name=image_name id=image_name minlength=2 maxlength=20 required>
+				</div>
+			</div>
+			<div class=row>
+				<div class="column column-25">
+					<label for=author_name>Author name</label>
+					<input type=text name=author_name id=author_name placeholder="Anonymous">
+				</div>
+			</div>
+			<div class=row>
+				<div class=column>
+					<div class="required form-question">Would you like to create one design or split it up and tile it?</div>
+					<input type=radio id=scale name=mode value=scale checked required>
+					<label class=label-inline for=scale>Scale</label>
+				</div>
 			</div>
 			<div>
 				<input type=radio id=tile name=mode value=tile required>
 				<label class=label-inline for=tile>Tile</label>
 			</div>
-			<div id="resize-group" style="display: none">
-				Resize<br>
+			<div id=resize-group>
+				<p class=form-question>
+					Dimensions (in pixels<noscript>, only required in &ldquo;Tile&rdquo; mode</noscript>)
+				</p>
 				{% from 'utils.html' import numeric_input_attrs %}
 				<div class=row>
-					<input {{ numeric_input_attrs }} name=resize-width placeholder="Width"><!--
-					--><span id="x">×</span><input {{ numeric_input_attrs }} name=resize-height placeholder="Height">
+					<div class="column column-20">
+						<label for=resize-width>Width</label>
+						<input {{ numeric_input_attrs }} id=resize-width name=resize-width>
+					</div>
+					<div class="column column-20">
+						<label for=resize-height>Height</label>
+						<input {{ numeric_input_attrs }} id=resize-height name=resize-height>
+					</div>
 				</div>
 			</div>
-			<input type=submit value="Upload">
+			<button>
+				<span class="hidden spinner-border" role=status aria-hidden=true></span>
+				Upload
+			</button>
 		</fieldset>
 	</form>
+	{% include 'create_design_form_common.html' %}
 	<script>
+		let nameBox = document.getElementById('image_name');
 		let scaleRadio = document.getElementById('scale');
 		let tileRadio = document.getElementById('tile');
-		let resizeGroup = document.querySelector('#resize-group');
+		let resizeGroup = document.getElementById('resize-group');
 		const scale = () => { resizeGroup.style.display = 'none'; };
 		const tile = () => { resizeGroup.style.display = 'block'; };
 		scaleRadio.addEventListener('click', scale);
 		tileRadio.addEventListener('click', tile);
-		document.addEventListener('DOMContentLoaded', () => (scaleRadio.checked ? scale : tile)());
+		document.addEventListener('DOMContentLoaded', (() => (scaleRadio.checked ? scale : tile)()));
 	</script>
 {% endblock %}

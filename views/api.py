@@ -4,6 +4,7 @@ import io
 import json
 import urllib.parse
 
+import flask.json
 import wand.image
 from flask import Blueprint, jsonify, current_app, request, stream_with_context
 from werkzeug.exceptions import HTTPException
@@ -15,6 +16,7 @@ import acnh.designs.db as designs_db
 import utils
 import tarfile_stream
 from acnh.errors import (
+	ACNHError,
 	InvalidDesignCodeError,
 	MissingLayerError,
 	InvalidScaleFactorError,
@@ -176,19 +178,21 @@ def create_image_gen():
 
 	author_name = request.values.get('author_name') or 'Anonymous'  # we are legion
 
+	design_type_name = request.values.get('design_type', 'basic-design')
 	try:
-		design_type_name = request.values['design_type']
-	except KeyError:
-		return create_basic_image(image_name, author_name)
-	else:
 		if design_type_name == 'basic-design':
-			return create_basic_image(image_name, author_name)
-		return create_pro_image(image_name, author_name, design_type_name)
+			yield from create_basic_image(image_name, author_name)
+		else:
+			yield from create_pro_image(image_name, author_name, design_type_name)
+	except ACNHError as ex:
+		yield ex.to_dict()
 
 def create_pro_image(image_name, author_name, design_type_name):
 	try:
-		layers = {filename: wand.image.Image(file=file) for filename, file in request.files.items()}
+		layers = {filename: wand.image.Image(blob=file.read()) for filename, file in request.files.items()}
 	except wand.image.WandException:
+		import traceback
+		traceback.print_exc()
 		raise InvalidImageError
 
 	design = Design(
@@ -199,13 +203,10 @@ def create_pro_image(image_name, author_name, design_type_name):
 		layers=layers,
 	)
 
-	def gen():
-		with contextlib.ExitStack() as stack:
-			for img in layers.values():
-				stack.enter_context(img)
-			yield from designs_db.create_image(design)
-
-	return gen()
+	with contextlib.ExitStack() as stack:
+		for img in layers.values():
+			stack.enter_context(img)
+		yield from designs_db.create_image(design)
 
 def create_basic_image(image_name, author_name):
 	width = height = None
@@ -229,7 +230,7 @@ def create_basic_image(image_name, author_name):
 	scale = 'scale' in request.values or request.values.get('mode') == 'scale'
 
 	try:
-		img = wand.image.Image(file=request.files['0'])
+		img = wand.image.Image(blob=request.files['0'].read())
 	except wand.image.WandException:
 		raise InvalidImageError
 	except KeyError:
@@ -248,19 +249,27 @@ def create_basic_image(image_name, author_name):
 		layers={'0': img},
 	)
 
-	def gen():
-		with img:
-			yield from designs_db.create_image(design, scale=scale)
-
-	return gen()
+	with img:
+		yield from designs_db.create_image(design, scale=scale)
 
 def format_created_design_results(gen, *, header=True):
+	def maybe_error(row):
+		if isinstance(row, dict):
+			return 'error: ' + flask.json.dumps(row)
+		return None
+
 	if header:
 		# pylint: disable=stop-iteration-return  # this will never raise StopIteration
-		image_id = next(gen)
-		yield str(image_id) + '\n'
+		row = next(gen)
+		yield maybe_error(row) or str(row) + '\n'
 
-	for was_quantized, design_id in gen:
+	for row in gen:
+		err = maybe_error(row)
+		if err:
+			yield err
+			return
+
+		was_quantized, design_id = row
 		yield f'{int(was_quantized)},{designs_api.design_code(design_id)}\n'
 
 @bp.route('/images')

@@ -3,8 +3,11 @@
 {% block content %}
 	<h2>Design codes</h2>
 	<ul>
-		{% for was_quantized, design_code in results %}
-			<li>{% if was_quantized %}<span class="emoji" title="This section of the image had to be quantized to fit the game's 16 color limit.">⚠️</span>{% endif %} <a href="/design/{{ design_code }}">MA-{{ design_code }}</a>
+		{% for was_quantized, design_code in results %}<li>
+			{% if was_quantized %}
+				<span class="emoji" title="{{ quantized_message }}">⚠️</span>
+			{% endif %}
+			MA-{{ design_code }}
 		{% endfor %}
 	</ul>
 	<h2>Done</h2>

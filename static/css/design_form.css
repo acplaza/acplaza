@@ -1,0 +1,11 @@
+.required::after {
+	color: red;
+	content: ' *';
+}
+/* copied from milligram's label styles */
+.form-question {
+	display: block;
+	font-size: 1.6rem;
+	font-weight: 700;
+	margin-bottom: .5rem;
+}

@@ -1,22 +1,40 @@
 {% extends 'base.html' %}
 {% block title %}Create a {{ cls.display_name|lower }}{% endblock %}
+{% block head %}
+	{{ super() }}
+	<link rel=stylesheet href="/static/css/design_form.css">
+{% endblock %}
 {% block content %}
 	<p>Please upload an image for each part of the design. All images must use the same 15 color palette.</p>
 	<form method=POST enctype="multipart/form-data">
 		<fieldset>
 			<input type=hidden name=csrf_token value="{{ csrf_token() }}">
 			<input type=hidden name=design_type value="{{ cls.name }}">
-			<label class=required for=image_name>Name</label>
-			<input type=text name=image_name id=image_name maxlength=20 required>
-			<label for=author_name>Author name</label>
-			<input type=text name=author_name id=author_name maxlength=20 placeholder="Anonymous">
+			<div class=row>
+				<div class="column column-25">
+					<label class=required for=image_name>Name</label>
+					<input type=text name=image_name id=image_name minlength=2 maxlength=20 required>
+				</div>
+			</div>
+			<div class=row>
+				<div class="column column-25">
+					<label for=author_name>Author name</label>
+					<input type=text name=author_name id=author_name placeholder="Anonymous">
+				</div>
+			</div>
 			{% for layer in cls.external_layers %}
-				<div><label>
-					{{ layer.display_name }} ({{ layer.width }}×{{ layer.height }})
-					<input type=file name="{{ layer.name }}">
-				</label></div>
+				<div>
+					<label class=required for="layer-{{ layer.name }}">
+						{{ layer.display_name }} ({{ layer.width }}×{{ layer.height }})
+					</label>
+					<input type=file id="layer-{{ layer.name }}" name="{{ layer.name }}" required>
+				</div>
 			{% endfor %}
-			<input type=submit value="Upload">
+			<button>
+				<span class="hidden spinner-border" role=status aria-hidden=true></span>
+				Upload
+			</button>
 		</fieldset>
 	</form>
+	{% include 'create_design_form_common.html' %}
 {% endblock %}

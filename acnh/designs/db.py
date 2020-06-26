@@ -13,7 +13,7 @@ from flask import request
 from . import api, encode
 from .format import SIZE, MAX_DESIGN_TILES
 from utils import pg, queries
-from ..errors import UnknownImageIdError, DeletionDeniedError, TiledImageTooBigError, num_tiles
+from ..errors import UnknownImageIdError, DeletionDeniedError, TiledImageTooBigError, ImageNameTooLongError, num_tiles
 
 ISLAND_NAMES = [
 	'The Cloud',
@@ -59,6 +59,7 @@ def garbage_collect_designs(needed_slots: int, *, pro: bool):
 	if not design_ids:
 		return
 
+	print('GC', len(design_ids), 'designs')
 	for design_id in design_ids:
 		api.delete_design(design_id)
 
@@ -108,7 +109,7 @@ def create_pro_design(design):
 def create_basic_design(design, *, scale: bool):
 	"""Upload a basic design. Scale controls whether to tile or scale the image. Returns an iterable of design IDs."""
 	image = design.layer_images['0']
-	images = split_images(image, scale=scale)
+	images = split_images(design, scale=scale)
 
 	# XXX is it a Design class or an Image class. It's both! Is that OK?
 	image_id = pg().fetchval(
@@ -147,9 +148,11 @@ def create_designs(image_id, design, images, *, tile: bool):
 		create_design(image_id=image_id, design_id=design_id, position=i, pro=False)
 		yield was_quantized, design_id
 
-def split_images(image, *, scale: bool):
+def split_images(design: encode.BasicDesign, *, scale: bool):
+	image = design.layer_images['0']
 	if image.size > SIZE and not scale:
 		TiledImageTooBigError.validate(image)
+		ImageNameTooLongError.validate(design)
 		return list(encode.tile(image))
 
 	# scale if necessary
@@ -198,7 +201,7 @@ def refresh_basic_image(rows):
 	img = wand.image.Image(width=image_info['width'], height=image_info['height'])
 	img.import_pixels(data=image_info['layers'][0], channel_map='RGBA')
 	design = encode.BasicDesign(layers={'0': img}, design_name=image_info['image_name'], island_name=island_name())
-	images = split_images(img, scale=image_info['mode'] == 'scale')
+	images = split_images(design, scale=image_info['mode'] == 'scale')
 	to_create = [(i, img) for i, img in enumerate(images, 1) if i in missing_positions]
 	yield from create_designs(image_info['image_id'], design, to_create, tile=image_info['mode'] == 'tile')
 

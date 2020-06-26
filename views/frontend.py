@@ -32,11 +32,17 @@ from acnh.errors import (
 from acnh.designs import api as designs_api
 from acnh.designs import encode as designs_encode
 from acnh.designs import db as designs_db
+from acnh.designs.format import MAX_DESIGN_TILES
 from utils import limiter
 
 def init_app(app):
 	app.register_blueprint(bp)
 	app.add_template_global(utils.config['acnh-design-creator-id'], name='api_author_id')
+	app.add_template_global(
+		"This design had to be quantized to fit the game's 16 color limit.",
+		name='quantized_message',
+	)
+	app.add_template_global(__import__('time').sleep)
 
 bp = Blueprint('frontend', __name__)
 

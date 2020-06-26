@@ -56,6 +56,8 @@ one or more in-game designs.
   A wide variety of image formats may be used (anything that ImageMagick supports).
   The response for this endpoint is streamed as text/plain. The first line of the stream is the resulting image ID.
   Each subsequent line is formatted like `was_quantized,design_code`. For example: `0,5RJJ-TXK3-JWXV`.
+  At any point a line can be `error: ` followed by a JSON object representing the error.
+  See [the section on Errors](#Errors) for details.
 - GET /image/:image-id
   Returns a JSON object with two keys: `image` and `design`. For example:
 
@@ -154,8 +156,9 @@ Error code | Description
 207 | Invalid layer name
 208 | Invalid argument for the `pro` query parameter
 209 | Cannot scale thumbnails
-210 | Invalid design (raised when Nintendo rejects an uploaded design)
+210 | Invalid design (raised when Nintendo rejects an uploaded design with HTTP status 400)
 211 | Invalid palette (the image(s) uploaded were not constrained to 15 colors + transparent)
+212 | Invalid design (raised when an uploaded design causes Nintendo's servers to error with code 500)
 **3xx** | **Image errors**
 207 (reused) | One or more provided layer names were invalid
 301 | Unknown image ID
@@ -167,6 +170,8 @@ Error code | Description
 307 | A required image argument was missing or invalid
 309 | One or more layers were missing
 310 | One or more layers were not a valid image file
+311 | *Unused*
+312 | Image name too long
 **9xx** | **General API errors**
 901 | Missing User-Agent header
 902 | Invalid or incorrect Authorization header

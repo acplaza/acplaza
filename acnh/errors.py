@@ -4,7 +4,7 @@ import re
 from http import HTTPStatus
 from typing import ClassVar, List, TYPE_CHECKING
 
-from .designs.format import PALETTE_SIZE, MAX_DESIGN_TILES, BYTES_PER_PIXEL, WIDTH, HEIGHT
+from .designs.format import PALETTE_SIZE, MAX_DESIGN_TILES, MAX_NAME_LEN, BYTES_PER_PIXEL, WIDTH, HEIGHT
 
 if TYPE_CHECKING:
 	from .designs.encode import Layer
@@ -125,13 +125,16 @@ class CannotScaleThumbnailError(DesignError):
 # not an invalid format error because it's not constrainable to a regex
 class InvalidDesignError(DesignError):
 	code = 210
-	message = 'invalid design'
+	message = 'Nintendo did not like your design for some reason. (Invalid name, perhaps?)'
 	http_status = HTTPStatus.BAD_REQUEST
 
 class InvalidPaletteError(DesignError):
 	code = 211
 	message = f'the combined palette of all layers exceeds {PALETTE_SIZE} colors'
 	http_status = HTTPStatus.BAD_REQUEST
+
+class DesignLitTheServerOnFireError(InvalidDesignError, DesignError):
+	code = 212
 
 class UnknownImageIdError(ImageError):
 	code = 301
@@ -223,6 +226,29 @@ class InvalidImageError(ImageError):
 	code = 310
 	message = 'One or more layers submitted represented an invalid image.'
 	http_status = HTTPStatus.BAD_REQUEST
+
+class ImageNameTooLongError(ImageError):
+	code = 312
+	message = 'The name provided was too long. Maximum in this case is {.max_len} characters.'
+	http_status = HTTPStatus.BAD_REQUEST
+
+	def __init__(self, max_len):
+		super().__init__()
+		self.max_len = max_len
+
+	@classmethod
+	def validate(cls, design):
+		img = design.layer_images['0']
+		overhead = len(f' {num_tiles(*img.size)}')
+		if design.design_name is not None and len(design.design_name) + overhead > MAX_NAME_LEN:
+			self = cls(MAX_NAME_LEN - overhead)
+			raise self
+		return design
+
+	def to_dict(self):
+		d = super().to_dict()
+		d['max_length'] = self.max_len
+		return d
 
 class InvalidPaginationError(ACNHError):
 	http_status = HTTPStatus.BAD_REQUEST

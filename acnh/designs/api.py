@@ -1,5 +1,6 @@
 # © 2020 io mintz <io@mintz.cc>
 
+import contextlib
 import operator
 import urllib.parse
 from http import HTTPStatus
@@ -15,6 +16,7 @@ from ..errors import (
 	UnknownDesignCodeError,
 	InvalidDesignCodeError,
 	InvalidDesignError,
+	DesignLitTheServerOnFireError,
 )
 
 DesignId = Union[str, int]
@@ -109,11 +111,16 @@ def delete_design(design_id) -> None:
 	if resp.status_code == HTTPStatus.NOT_FOUND:
 		raise UnknownDesignCodeError
 
+design_errors = {
+	HTTPStatus.BAD_REQUEST: InvalidDesignError,
+	HTTPStatus.INTERNAL_SERVER_ERROR: DesignLitTheServerOnFireError,
+}
+
 def create_design(design_data) -> int:
 	"""create a design. returns the created design ID."""
 	resp = acnh().request('POST', '/api/v1/designs', data=msgpack.dumps(design_data))
-	if resp.status_code == HTTPStatus.BAD_REQUEST:
-		raise InvalidDesignError
+	with contextlib.suppress(KeyError):
+		raise design_errors[resp.status_code]
 	resp.raise_for_status()
 	data = msgpack.loads(resp.content)
 	return data['id']
