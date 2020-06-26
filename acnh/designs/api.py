@@ -101,7 +101,7 @@ def stale_designs(needed, *, pro: bool):
 	free_slots = MAX_DESIGNS - r['count']
 	if free_slots >= needed:
 		return []
-	return sorted(r['headers'], key=operator.itemgetter('created_at'))[:free_slots - needed]
+	return sorted(r['headers'], key=operator.itemgetter('created_at'))[:needed]
 
 @accepts_design_id
 def delete_design(design_id) -> None:
