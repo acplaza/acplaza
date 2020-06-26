@@ -163,6 +163,7 @@ def design(design_code):
 		design_type=type(design).display_name,
 		island_name=meta['mMtVNm'],
 		layers=stream_with_context(gen()),
+		preview=utils.image_to_base64_url(design.net_image()) if image_info['pro'] else None,
 	)
 
 @bp.route('/designs/<author_id>')
@@ -253,14 +254,14 @@ def image(image_id):
 		# pylint: disable=not-callable
 		design = cls(layers=layers, **cls_kwargs)
 
-		layers = [
+		layers = stream_with_context(
 			(
 				name.capitalize().replace('-', ' '),
 				utils.image_to_base64_url(utils.xbrz_scale_wand_in_subprocess(image, 6))
 			)
 			for name, image
 			in design.layer_images.items()
-		]
+		)
 	else:
 		img = wand.image.Image(width=image_info['width'], height=image_info['height'])
 		img.import_pixels(data=image_info['layers'][0], channel_map='RGBA')
@@ -268,13 +269,14 @@ def image(image_id):
 			img = utils.xbrz_scale_wand_in_subprocess(img, 6)
 		# pylint: disable=not-callable
 		design = cls(**cls_kwargs, layers={'0': img})
-		layers = [('0', utils.image_to_base64_url(img))]
+		layers = stream_with_context([('0', utils.image_to_base64_url(img))])
 
-	return render_template(
+	return utils.stream_template(
 		'image.html',
 		image=image_info, design=design, layers=layers, designs=designs,
 		design_type=cls.display_name,
-		preview=utils.image_to_base64_url(design.net_image()) if image_info['pro'] else None,
+		# make it an iterable so that it can be streamed
+		preview=utils.image_to_base64_url(design.net_image()) if image_info['pro'] else None
 	)
 
 @bp.route('/refresh-image/<image_id>')

@@ -7,6 +7,7 @@
 {% endblock %}
 {% block content %}
 	<p>{{ design_type }}</p>
+
 	{% if session.user_id == image.author_id %}
 		<nav>
 			<form method=post action="/image/{{ image.image_id }}/delete">
@@ -15,21 +16,30 @@
 			</form>
 		</nav>
 	{% endif %}
+
 	{% if image.designs_required == 1 %}
 		<a href="/design/{{ designs['0'] }}.tar">Download all layers</a><br>
 	{% endif %}
+
+	{% for _ in range(1) %}
+		{# yield everything rendered so far #}
+	{% endfor %}
+
 	{% if preview %}
-		<img src="{{ preview }}"><br>
+		<img alt="Preview image of &ldquo;{{ image.image_name }}&rdquo;" title="Preview" src="{{ preview }}">
 	{% endif %}
+
 	{% for name, url in layers %}
 		<img alt="{{ name }}" title="{{ name }}" src="{{ url }}">
 	{% endfor %}
+
 	{% if designs|length < image.designs_required %}
 		<p>
 			Some in-game designs have been deleted to save space.
 			<a href="/refresh-image/{{ image.image_id }}">Recreate them</a>
 		</p>
 	{% endif %}
+
 	<h2>Active design codes</h2>
 	<ol>
 		{% for position, design_code in designs.items() %}
