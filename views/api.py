@@ -2,6 +2,7 @@ import contextlib
 import datetime as dt
 import io
 import json
+import traceback
 import urllib.parse
 
 import flask.json
@@ -191,7 +192,7 @@ def create_pro_image(image_name, author_name, design_type_name):
 	try:
 		layers = {filename: wand.image.Image(blob=file.read()) for filename, file in request.files.items()}
 	except wand.image.WandException:
-		import traceback
+		print('In:', request.path)
 		traceback.print_exc()
 		raise InvalidImageError
 
@@ -231,7 +232,9 @@ def create_basic_image(image_name, author_name):
 
 	try:
 		img = wand.image.Image(blob=request.files['0'].read())
-	except wand.image.WandException:
+	except wand.image.WandException as exc:
+		print('In', request.path)
+		traceback.print_exc()
 		raise InvalidImageError
 	except KeyError:
 		# pylint: disable=no-member  # external_layers is defined dynamically
