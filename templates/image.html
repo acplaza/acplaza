@@ -42,8 +42,9 @@
 
 	<h2>Active design codes</h2>
 	<ol>
+		{% set should_link_to_designs = designs|length > 1 %}
 		{% for position, design_code in designs.items() %}
-			<li value="{{ position }}">{{ design_code }}
+			<li value="{{ position }}"><a href="/design/{{ design_code }}">MA-{{ design_code }}</a>
 		{% endfor %}
 	</ol>
 {% endblock %}
