@@ -1,5 +1,4 @@
 let formEl = document.forms[0];
-let formData = new FormData(formEl);
 let submitEl = document.querySelector('button');
 let submitElSpinner = submitEl.querySelector('.spinner-border');
 let resultsEl = document.getElementById('results');
@@ -45,6 +44,7 @@ formEl.addEventListener('submit', (e) => {
 		return null;
 	}
 
+	let formData = new FormData(formEl);
 	(async () => {
 		let resp = await fetch('/api/v0/images', {
 			method: 'POST',
