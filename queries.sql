@@ -25,7 +25,7 @@ LIMIT $1
 
 -- :macro design_image()
 -- params: design_id
-SELECT image_id, designs_required
+SELECT image_id, designs_required, images.pro
 FROM designs INNER JOIN images USING (image_id)
 WHERE design_id = $1
 -- :endmacro
