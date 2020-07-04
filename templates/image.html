@@ -41,6 +41,8 @@
 	{% endif %}
 
 	<h2>Active design codes</h2>
+	<!-- let the user get all the designs at once in game -->
+	<p>Author ID: MO-{{ pretty_api_author_id }}</p>
 	<ol>
 		{% set should_link_to_designs = designs|length > 1 %}
 		{% for position, design_code in designs.items() %}

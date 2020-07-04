@@ -37,7 +37,11 @@ from utils import limiter
 
 def init_app(app):
 	app.register_blueprint(bp)
-	app.add_template_global(utils.config['acnh-design-creator-id'], name='api_author_id')
+	api_author_id = utils.config['acnh-design-creator-id']
+	# for comparisons
+	app.add_template_global(api_author_id, name='api_author_id')
+	# for display
+	app.add_template_global(designs_api.add_hyphens(str(api_author_id)), name='pretty_api_author_id')
 	app.add_template_global(
 		"This design had to be quantized to fit the game's 16 color limit.",
 		name='quantized_message',
