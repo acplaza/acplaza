@@ -23,6 +23,7 @@ h2 {
 	color: grey;
 	margin-left: 1rem;
 	margin-bottom: 0rem;
+	font-size: 1.3rem;
 }
 .form-wrapper > input[type=text] {
 	flex-grow: 1;
@@ -31,7 +32,8 @@ h2 {
 	padding-left: 0rem;
 	/* TODO why does adding
 	font-size: 1.6rem;
-	* break the view button? */
+	* break the view button, but 1.3rem doesn't? */
+	font-size: 1.3rem;
 }
 .form-wrapper > input[type=submit] {
 	border: 0;
