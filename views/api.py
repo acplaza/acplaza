@@ -190,7 +190,11 @@ def create_image_gen():
 
 def create_pro_image(image_name, author_name, design_type_name):
 	try:
-		layers = {filename: wand.image.Image(blob=file.read()) for filename, file in request.files.items()}
+		layers = {
+			filename: wand.image.Image(blob=file.read()).convert('PNG')
+			for filename, file
+			in request.files.items()
+		}
 	except wand.image.WandException:
 		print('In:', request.path)
 		traceback.print_exc()
@@ -231,7 +235,7 @@ def create_basic_image(image_name, author_name):
 	scale = 'scale' in request.values or request.values.get('mode') == 'scale'
 
 	try:
-		img = wand.image.Image(blob=request.files['0'].read())
+		img = wand.image.Image(blob=request.files['0'].read()).convert('PNG')
 	except wand.image.WandException as exc:
 		print('In', request.path)
 		traceback.print_exc()
