@@ -167,7 +167,7 @@ def design(design_code):
 		design_type=type(design).display_name,
 		island_name=meta['mMtVNm'],
 		layers=stream_with_context(gen()),
-		preview=utils.image_to_base64_url(design.net_image()) if image_info['pro'] else None,
+		preview=utils.image_to_base64_url(design.net_image()) if meta['mMtPro'] else None,
 	)
 
 @bp.route('/designs/<author_id>')
