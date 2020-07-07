@@ -1,48 +1,63 @@
 {% extends 'base.html' %}
 {% block title %}Welcome{% endblock %}
+{% block head %}
+	{{ super() }}
+	<link rel=stylesheet href="/static/css/index.css">
+{% endblock %}
 {% block content %}
-	<a class="button button-outline" href="/logout">Log out</a>
-	<h2><a href="/create-design">Create a design</a></h2>
-	<h2>View a design</h2>
-	<form action="/design/">
-		<label for=design_code>Enter a design ID</label>
-		<div class=row>
-			MO-<input
-				id=design_code
-				name=design_code
-				type=text
-				placeholder="5RJJ-TXK3-JWXV"
-				pattern="{{ design_code_regex }}"
-			>
+	<nav>
+		<ul>
+			<li><a class="button button-outline" href="/logout">Log out</a>
+			<li><a class=button href="/create-design">Create a design</a>
+		</ul>
+	</nav>
+	<div class="row">
+		<div class="column">
+			<h2>View a design</h2>
+			<label for=design_code>Enter a design ID</label>
+			<form action="/design/" class=form-wrapper>
+				<label for=design_code>MO-</label>
+				<input
+					id=design_code
+					name=design_code
+					type=text
+					placeholder="5RJJ-TXK3-JWXV"
+					pattern="{{ design_code_regex }}"
+				>
+				<input type=submit value="View">
+			</form>
 		</div>
-		<input type=submit value="View">
-	</form>
-	<h2>View a creator's designs</h2>
-	<form action="/designs/">
-		<label for=author_id>Enter a creator ID</label>
-		<div class=row>
-			MA-<input
-				id=author_id
-				name=author_id
-				type=text
-				inputmode=numeric
-				placeholder="6677-5165-4031"
-				pattern="{{ author_id_regex }}"
-			>
+		<div class=column>
+			<h2>View a creator's designs</h2>
+			<label for=author_id>Enter a creator ID</label>
+			<form action="/designs/" class=form-wrapper>
+				<label for=author_id>MA-</label>
+				<input
+					id=author_id
+					name=author_id
+					type=text
+					inputmode=numeric
+					placeholder="6677-5165-4031"
+					pattern="{{ author_id_regex }}"
+				>
+				<input type=submit value="View">
+			</form>
 		</div>
-		<input type=submit value="View">
-	</form>
-	<h2>View an active island hosting session</h2>
-	<form action="/host-session/">
-		<label for=dodo_code>Enter a Dodo Code™</label>
-		<input
-			id=dodo_code
-			name=dodo_code
-			type=text
-			autocomplete=off
-			placeholder="QRM30"
-			pattern="{{ dodo_code_regex }}"
-		>
-		<input type=submit value="View">
-	</form>
+		<div class=column>
+			<h2>View an active island hosting session</h2>
+			<label for=dodo_code>Enter a Dodo Code™</label>
+			<form action="/host-session/" class=form-wrapper>
+				<label for=dodo_code aria-hidden=true></label>
+				<input
+					id=dodo_code
+					name=dodo_code
+					type=text
+					autocomplete=off
+					placeholder="QRM30"
+					pattern="{{ dodo_code_regex }}"
+				>
+				<input type=submit value="View">
+			</form>
+		</div>
+	</div>
 {% endblock %}
