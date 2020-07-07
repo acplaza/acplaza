@@ -10,8 +10,12 @@
 		<fieldset>
 			<input type=hidden name=csrf_token value="{{ csrf_token() }}">
 			<input type=hidden name=design_type value=basic-design>
-			<label class=required for=file>Pick an image</label>
-			<input type=file id=file name=0 required>
+			<div class=row>
+				<div class="column column-25">
+					<label class=required for=file>Pick an image</label>
+					<input type=file id=file name=0 required>
+				</div>
+			</div>
 			<div class=row>
 				<div class="column column-25">
 					<label class=required for=image_name>Name</label>
@@ -25,20 +29,20 @@
 				</div>
 			</div>
 			<div class=row>
-				<div class=column>
+				<div class="column column-50">
 					<div class="required form-question">Would you like to create one design or split it up and tile it?</div>
 					<input type=radio id=scale name=mode value=scale checked required>
 					<label class=label-inline for=scale>Scale</label>
+					<input type=radio id=tile name=mode value=tile required>
+					<label class=label-inline for=tile>Tile</label>
 				</div>
 			</div>
-			<div>
-				<input type=radio id=tile name=mode value=tile required>
-				<label class=label-inline for=tile>Tile</label>
-			</div>
-			<div id=resize-group>
-				<p class=form-question>
+			<div class="resize-question row">
+				<p class="form-question column column-25">
 					Dimensions (in pixels<noscript>, only required in &ldquo;Tile&rdquo; mode</noscript>)
 				</p>
+			</div>
+			<div class="resize-question row">
 				{% from 'utils.html' import numeric_input_attrs %}
 				<div class=row>
 					<div class="column column-20">
@@ -51,10 +55,14 @@
 					</div>
 				</div>
 			</div>
-			<button>
-				<span class="hidden spinner-border" role=status aria-hidden=true></span>
-				Upload
-			</button>
+			<div class=row>
+				<div class="column column-20">
+					<button>
+						<span class="hidden spinner-border" role=status aria-hidden=true></span>
+						Upload
+					</button>
+				</div>
+			</div>
 		</fieldset>
 	</form>
 	{% include 'create_design_form_common.html' %}
@@ -62,9 +70,9 @@
 		let nameBox = document.getElementById('image_name');
 		let scaleRadio = document.getElementById('scale');
 		let tileRadio = document.getElementById('tile');
-		let resizeGroup = document.getElementById('resize-group');
-		const scale = () => { resizeGroup.style.display = 'none'; };
-		const tile = () => { resizeGroup.style.display = 'block'; };
+		let resizeQuestions = document.getElementsByClassName('resize-question');
+		const scale = () => { for (let el of resizeQuestions) { el.style.display = 'none'; } };
+		const tile = () => { for (let el of resizeQuestions) { el.style.display = 'block'; } };
 		scaleRadio.addEventListener('click', scale);
 		tileRadio.addEventListener('click', tile);
 		document.addEventListener('DOMContentLoaded', (() => (scaleRadio.checked ? scale : tile)()));
