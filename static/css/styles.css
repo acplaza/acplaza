@@ -30,6 +30,9 @@ nav ul {
 	color: white;
 	padding: 1rem;
 }
+hr {
+	border-top: 0.1rem solid #d1d1d1;
+}
 
 /*
 Copyright (c) 2011-2020 Twitter, Inc.
