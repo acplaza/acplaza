@@ -77,7 +77,7 @@ formEl.addEventListener('submit', (e) => {
 				row.appendChild(emojiSpan);
 			}
 
-			row.appendChild(document.createTextNode(' MA-' + designCode));
+			row.appendChild(document.createTextNode(' MO-' + designCode));
 			resultsListEl.appendChild(row);
 		}
 
