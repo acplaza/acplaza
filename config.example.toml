@@ -4,16 +4,18 @@ flask-secret-key = '...'
 # how many reverse proxies that add X-Forwarded-For headers is your site behind?
 num-reverse-proxies = 1
 
-# You can get your user id and password from
+# You can get your profile id, user id and password from
 # su/baas/<guid>.dat in save folder 8000000000000010.
 
-# Bytes 0x20 - 0x28 contain the user id as a single little endian integer,
+# Bytes 0x0 – 0x08 contain the profile ID as a single little endian integer,
+# bytes 0x20 - 0x28 contain the user id as a single little endian integer,
 # and bytes 0x28 - 0x50 contain the
 # password in plain text.
 
 # Alternatively, you can set up a mitm on your Switch
 # and extract them from the request to /1.0.0/login
 
+baas-profile-id = 0x0123456789abcdef  # 16 hex digits
 baas-user-id = 0x0123456789abcdef  # 16 hex digits
 baas-password = "..."  # should be 40 characters
 

@@ -16,6 +16,7 @@ import msgpack
 from .. import utils
 from .format import PALETTE_SIZE, SIZE as STANDARD, WIDTH as STANDARD_WIDTH, HEIGHT as STANDARD_HEIGHT
 from ..errors import InvalidLayerNameError, MissingLayerError, InvalidPaletteError, InvalidLayerSizeError
+from utils import config
 
 XY = Tuple[int, int]
 
@@ -561,7 +562,7 @@ def encode(design: Design) -> dict:
 		'mMtDNm': design.design_name,
 		'mMtUse': design.type_code,
 		'mMtPro': design.pro,
-		'mMtNsaId': random.randrange(2**64),
+		'mMtNsaId': config['baas-profile-id'],
 		'mMtVer': 2306,
 		'mAppReleaseVersion': 7,
 		'mMtVRuby': 2,
