@@ -238,7 +238,6 @@ commit.
 - Ava#4982 figured out the Design Code alphanumeric format.
 - @The0x539 assisted with figuring out how to specify the conversions between internal and external layers for
   Pro designs.
-
 - acnh/common.py is based on code provided by Yannik Marchand, used under the MIT License.
   See that file for details.
 - acnh/designs/render.py is based on code provided by @nickwanninger
