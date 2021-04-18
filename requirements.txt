@@ -1,5 +1,5 @@
 Flask>=1.1.2,<2.0.0
-Nintendo @ git+https://github.com/Kinnay/NintendoClients.git
+Nintendo @ git+https://github.com/Kinnay/NintendoClients.git@bbf89cc4cae4d215e210fb2ca24358a349cc9b25
 toml>=0.10.0,<1.0.0
 msgpack>=1.0.0,<2.0.0
 Wand>=0.6.1,<1.0.0
