@@ -117,7 +117,7 @@ async def host_session_form():
 @bp.route('/host-session/<dodo_code>')
 @rate_limit(1, dt.timedelta(seconds=4))
 async def host_session(dodo_code):
-	data = dodo.search_dodo_code(dodo_code)
+	data = await dodo.search_dodo_code(dodo_code)
 	return await render_template('host_session.html', **data)
 
 @bp.route('/design/')

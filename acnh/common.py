@@ -39,13 +39,14 @@ from nintendo.switch.aauth import AAuthClient
 from nintendo.switch.dragons import DragonsClient
 from nintendo.switch import load_keys
 from nintendo.nex import settings
-from nintendo.nex.backend import BackEndClient
+from nintendo.nex.backend import connect as backend_connect
 from nintendo.nex.authentication import AuthenticationInfo
 
 from .utils import load_cached
 
 def init_app(app):
 	app.while_serving(acnh)
+	app.while_serving(backend)
 
 # this is here to resolve circular imports
 # pylint: disable=wrong-import-position
@@ -143,7 +144,6 @@ async def aauth():
 async def baas():
 	baas = BAASClient()
 	baas.set_system_version(SYSTEM_VERSION)
-	#await baas.authenticate(device_token())
 	return baas
 
 async def acnh():
@@ -152,8 +152,21 @@ async def acnh():
 	async with ACNHClient(acnh_token_) as current_app.acnh:
 		yield
 
-def backend():
-	raise NotImplementedError
+async def backend():
+	user_id, id_token = await baas_credentials()
+
+	auth_info = AuthenticationInfo()
+	auth_info.token = id_token
+	auth_info.ngs_version = 4  # Switch
+	auth_info.token_type = 2
+
+	s = settings.load('switch')
+	s.configure(ACCESS_KEY, NEX_VERSION, CLIENT_VERSION)
+	async with (
+		backend_connect(s, HOST, PORT) as be,
+		be.login(str(user_id), auth_info=auth_info) as current_app.backend,
+	):
+		yield
 
 async def device_token_dragons():
 	async def cb(): return (await (await dauth()).device_token(CLIENT_ID_DRAGONS))['device_auth_token']

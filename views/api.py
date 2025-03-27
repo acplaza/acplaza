@@ -11,7 +11,7 @@ from quart import Blueprint, jsonify, current_app, request, stream_with_context
 from quart_rate_limiter import rate_limit
 from werkzeug.exceptions import HTTPException
 
-import acnh.dodo as dodo
+from acnh import dodo
 import acnh.designs.api as designs_api
 import acnh.designs.render as designs_render
 import acnh.designs.db as designs_db
