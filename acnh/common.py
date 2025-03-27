@@ -100,15 +100,12 @@ class ACNHClient:
 	async def __aenter__(self):
 		ctx = anynet.tls.TLSContext()
 		ctx.set_authority(anynet.tls.TLSCertificate.load('data/nintendo-ca.crt', anynet.tls.TYPE_PEM))
-		tls_client = await anynet.tls.connect(self.headers['Host'], 443).__aenter__()
-		self.http_client = anynet.http.HTTPClient(tls_client)
+		self._ctxman = anynet.http.connect(self.BASE, ctx)
+		self.http_client = await self._ctxman.__aenter__()
 		return self
 
 	async def __aexit__(self, *excinfo):
-		await self.close()
-
-	async def close(self):
-		await self.http_client.close()
+		return await self._ctxman.__aexit__(*excinfo)
 
 def appfunc(func):
 	@functools.wraps(func)
