@@ -165,7 +165,6 @@ async def device_token_baas():
 
 async def contents_token():
 	async def cb(): return (await (await dragons()).contents_authorization_token_for_aauth(
-
 		await device_token_dragons(),
 		config['elicense-id'],
 		config['na-id'],
