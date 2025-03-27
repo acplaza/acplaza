@@ -9,7 +9,7 @@ from typing import List, Generic, TypeVar, Optional
 
 import anyio
 import wand.image
-from quart import request
+from quart import request, current_app
 
 from . import api, encode
 from .format import SIZE, MAX_DESIGN_TILES

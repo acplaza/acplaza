@@ -8,6 +8,8 @@ from functools import wraps
 from typing import Union
 
 import msgpack
+import anynet.http
+from quart import current_app
 
 from utils import config
 from .. import utils

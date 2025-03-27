@@ -10,6 +10,7 @@ import wand.image
 from quart import (
 	abort,
 	Blueprint,
+	current_app,
 	render_template,
 	session,
 	request,
@@ -75,7 +76,7 @@ async def login():
 		# with the form
 		abort(HTTPStatus.UNAUTHORIZED)
 
-	user_id = utils.validate_token(token)
+	user_id = await utils.validate_token(token)
 	if not user_id:
 		return 'auth failed', HTTPStatus.UNAUTHORIZED
 
@@ -99,7 +100,7 @@ async def index():
 	if not session.get('user_id'):
 		return redirect(url_for('.login'))
 	# pylint: disable=no-member
-	return render_template(
+	return await render_template(
 		'index.html',
 		design_code_regex=InvalidDesignCodeError.regex.pattern,
 		author_id_regex=InvalidAuthorIdError.regex.pattern,
@@ -150,11 +151,12 @@ async def design(design_code):
 
 	design = designs_encode.Design.from_data(data)
 
+	@stream_with_context
 	async def gen():
 		for name, image in design.layer_images.items():
 			yield (
 				name.capitalize().replace('-', ' '),
-				utils.image_to_base64_url(utils.xbrz_scale_wand_in_subprocess(image, 6)),
+				utils.image_to_base64_url(await utils.xbrz_scale_wand_in_subprocess(image, 6)),
 			)
 
 	return await render_template(
@@ -168,7 +170,7 @@ async def design(design_code):
 		design_name=design_name,
 		design_type=type(design).display_name,
 		island_name=meta['mMtVNm'],
-		layers=stream_with_context(gen()),
+		layers=gen(),
 		preview=utils.image_to_base64_url(design.net_image()) if meta['mMtPro'] else None,
 	)
 
@@ -185,15 +187,16 @@ async def pro_designs(author_id):
 async def designs(author_id, *, pro):
 	author_id = int(InvalidAuthorIdError.validate(author_id).replace('-', ''))
 	pretty_author_id = designs_api.add_hyphens(str(author_id))
-	data = designs_api.list_designs(author_id, pro=pro, with_binaries=True)
+	data = await designs_api.list_designs(author_id, pro=pro, with_binaries=True)
 	if not data['total']:
-		return render_template(
+		return await render_template(
 			'no_designs.html',
 			pro=pro, design_type='Pro' if pro else 'basic', author_id=pretty_author_id,
 		)
 
 	author_name = data['headers'][0]['design_player_name']
 
+	@stream_with_context
 	async def designs():
 		for header in data['headers']:
 			req = anynet.http.HTTPRequest.get(header['body'])
@@ -213,7 +216,7 @@ async def designs(author_id, *, pro):
 		author_id=pretty_author_id,
 		author_name=author_name,
 		pro=pro,
-		designs=stream_with_context(designs()),
+		designs=designs(),
 		design_type='Pro' if pro else 'basic',
 	)
 
@@ -228,8 +231,8 @@ async def create_basic_design_form():
 @bp.route('/create-design/<_>', methods=['POST'])
 @rate_limit(1, dt.timedelta(seconds=15))
 async def create_image(_):
-	gen = stream_with_context(api.create_image_gen())
-	image_id = next(gen)
+	gen = stream_with_context(api.create_image_gen())()
+	image_id = await anext(gen)
 	return await render_template(
 		'created_image.html', image_id=image_id, results=format_created_designs_gen(gen), verb='created',
 	)
@@ -295,7 +298,7 @@ async def image(image_id):
 # no rate limit because this endpoint has no effect if it doesn't need to run
 async def refresh_image(image_id):
 	image_id = int(api.InvalidImageIdError.validate(image_id))
-	results = stream_with_context(format_created_designs_gen(designs_db.refresh_image(image_id)))
+	results = stream_with_context(format_created_designs_gen(designs_db.refresh_image(image_id)))()
 	return await render_template('created_image.html', image_id=image_id, results=results, verb='refreshed')
 
 @bp.route('/image/<image_id>/delete', methods=['POST'])

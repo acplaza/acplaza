@@ -95,7 +95,7 @@ async def process_authorization():
 	if not token:
 		raise IncorrectAuthorizationError(request.full_path.rstrip('?'))
 
-	user_id = validate_token(token)
+	user_id = await validate_token(token)
 	if not user_id:
 		raise IncorrectAuthorizationError
 
@@ -107,7 +107,7 @@ async def validate_token(token):
 	except ValueError:
 		return False
 
-	db_secret = await g.connection.fetch_val(queries.secret(), user_id)
+	db_secret = await current_app.pg.fetchval(queries.secret(), user_id)
 	if db_secret is None:
 		return False
 
