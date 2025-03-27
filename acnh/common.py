@@ -98,8 +98,8 @@ class ACNHClient:
 		return await self.http_client.request(request)
 
 	async def __aenter__(self):
-#		ctx = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
-#		ctx.load_cert_chain(cafile='data/nintendo-ca.crt')
+		ctx = anynet.tls.TLSContext()
+		ctx.set_authority(anynet.tls.TLSCertificate.load('data/nintendo-ca.crt', anynet.tls.TYPE_PEM))
 		tls_client = await anynet.tls.connect(self.headers['Host'], 443).__aenter__()
 		self.http_client = anynet.http.HTTPClient(tls_client)
 		return self
