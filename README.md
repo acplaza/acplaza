@@ -190,37 +190,15 @@ you play Animal Crossing on normally, so that the API can be used while you're p
 2. In Hekate, make a full backup of your Switch's NAND.
 3. Install [ninfs](https://github.com/ihaveamac/ninfs) and use this command to mount your backup:
    `mount_nandhac -S rawnand.bin.00 /path/to/mountpoint`
-4. Copy PRODINFO.img from your mountpoint to somewhere safe.
-5. Mount SYSTEM.img as a FAT32 filesystem.
+4. Copy PRODINFO.img from your mountpoint to somewhere safe, and use setup/dump_cert.py to dump your device certificate and key.
+5. Mount SYSTEM.img as a FAT32 filesystem, **or** you can use [TegraExplorer](https://github.com/suchmememanyskill/TegraExplorer)
+   to back up the save file directly from your switch.
 6. Using [hactoolnet](https://github.com/Thealexbarney/LibHac/releases), extract the `save/8000000000000010`
    file from your SYSTEM.img mountpoint using the following command:
    `hactoolnet -t save --outdir 8000000000000010-extracted /path/to/system.img-mountpoint/save/8000000000000010`.
 7. `8000000000000010-extracted/su/baas/<guid>.dat` contains your BAAS user ID and password (your GUID will differ).
-   The following python code will extract it:
-
-```py
-with open('/path/to/<guid>.dat', 'rb') as f:
-	f.seek(0x20)
-	print('BAAS user ID:', hex(int.from_bytes(f.read(8), byteorder='little')))
-	print('BAAS password:', f.read(40).decode('ascii'))
-```
-
-8. Use [nxdumptool](https://github.com/DarkMatterCore/nxdumptool/releases) to dump your AC:NH ticket.
-   You must have the eShop version to proceed. Game cards are not supported. 
-   Use nxdumptool to dump the base ticket (not the update ticket) for the game.
-9. Dump your save file using [JKSV](https://github.com/J-D-K/JKSV/releases).
-   Use [effective-guacamole](https://github.com/3096/effective-guacamole) to decrypt your save file.
-   Your ACNH user ID and password are contained in the VillagerN/personal.dat file after decryption.
-   Use the following python code to extract it:
-
-```py
-with open('Villager0/personal.dat.dec', 'rb') as f:
-	f.seek(0x6B838)
-	print('ACNH User ID:', hex(int.from_bytes(f.read(8), 'little')))
-	print('ACNH Password:', f.read(64).decode('ascii'))
-```
-
-10. Edit config.toml according to the information and files you retrieved.
+   setup/dump_baas_creds.py will extract it.
+8. Edit config.toml according to the information and files you retrieved.
 
 ## License
 
