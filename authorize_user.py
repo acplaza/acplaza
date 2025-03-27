@@ -1,12 +1,17 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 
 import secrets
 import sys
-from app import app
-from utils import encode_token, pg, queries
+import asyncpg
+from quart import current_app
+from utils import config, encode_token, queries
 
-username = sys.argv[1]
-with app.app_context():
+async def main():
+	username = sys.argv[1]
 	secret = secrets.token_bytes()
-	user_id = pg().fetchval(queries.authorize_user(), secret, username)
+	pg = await asyncpg.connect(**config['postgres-db'])
+	user_id = await pg.fetchval(queries.authorize_user(), secret, username)
 	print(encode_token(user_id, secret))
+
+import anyio
+anyio.run(main)

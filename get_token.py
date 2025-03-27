@@ -1,14 +1,17 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 
 import sys
-
+import asyncpg
 from app import app
-from utils import pg, encode_token, queries
+from utils import pg, encode_token, queries, config
 
-with app.app_context():
+async def main():
 	user_id = int(sys.argv[1])
-	secret = pg().fetchval(queries.secret(), user_id)
+	pg = await asyncpg.connect(**config['postgres-db'])
+	secret = await pg.fetchval(queries.secret(), user_id)
 	if secret is None:
-		print('Secret not found', file=sys.stderr)
-		sys.exit(1)
+		sys.exit('Secret not found')
 	print(encode_token(user_id, secret))
+
+import anyio
+anyio.run(main)
