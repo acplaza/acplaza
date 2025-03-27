@@ -4,11 +4,11 @@ import os.path
 import time
 
 # pylint: disable=dangerous-default-value
-def load_cached(path, callback, *, duration=23 * 60 * 60, binary=False, _cache={}):
+async def load_cached(path, callback, *, duration=23 * 60 * 60, binary=False, _cache={}):
 	now = time.time()
 
-	def refresh_cache():
-		rv = callback()
+	async def refresh_cache():
+		rv = await callback()
 		with open(path, 'wb' if binary else 'w') as f:
 			f.write(rv)
 		_cache[path] = rv, now
@@ -20,7 +20,7 @@ def load_cached(path, callback, *, duration=23 * 60 * 60, binary=False, _cache={
 		pass
 	else:
 		if now - last_modified > duration:
-			return refresh_cache()
+			return await refresh_cache()
 		return rv
 
 	# not in cache
@@ -28,12 +28,12 @@ def load_cached(path, callback, *, duration=23 * 60 * 60, binary=False, _cache={
 	try:
 		last_modified = os.stat(path).st_mtime
 	except FileNotFoundError:
-		return refresh_cache()
+		return await refresh_cache()
 
 	# not in cache but file exists
 
 	if now - last_modified > duration:
-		return refresh_cache()
+		return await refresh_cache()
 
 	# not in cache, file exists, and the file is young enough
 

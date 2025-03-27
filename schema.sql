@@ -50,4 +50,3 @@ CREATE TABLE designs (
 CREATE INDEX design_sequence_idx ON designs (image_id, position);
 -- lets us find which ones to garbage collect
 CREATE INDEX oldest_designs ON designs (pro, created_at);
-

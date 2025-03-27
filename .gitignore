@@ -1,4 +1,8 @@
 /config.toml
+
+/device_cert.pem
+/device_cert.key
+
 __pycache__/
 *.bmp
 *.jpg

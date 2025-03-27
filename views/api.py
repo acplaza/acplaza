@@ -5,9 +5,10 @@ import json
 import traceback
 import urllib.parse
 
-import flask.json
+import quart.json
 import wand.image
-from flask import Blueprint, jsonify, current_app, request, stream_with_context
+from quart import Blueprint, jsonify, current_app, request, stream_with_context
+from quart_rate_limiter import rate_limit
 from werkzeug.exceptions import HTTPException
 
 import acnh.dodo as dodo
@@ -33,7 +34,6 @@ from acnh.errors import (
 )
 from acnh.designs.db import PageSpecifier, PageDirection
 from acnh.designs.encode import BasicDesign, Design
-from utils import limiter
 
 def init_app(app):
 	app.register_blueprint(bp)
@@ -41,80 +41,82 @@ def init_app(app):
 bp = Blueprint('api', __name__, url_prefix='/api/v0')
 
 @bp.route('/host-session/<dodo_code>')
-@limiter.limit('1 per 4 seconds')
-def host_session(dodo_code):
-	return dodo.search_dodo_code(dodo_code)
+@rate_limit(1, dt.timedelta(seconds=4))
+async def host_session(dodo_code):
+	return await dodo.search_dodo_code(dodo_code)
 
 @bp.route('/design/<design_code>')
-@limiter.limit('5 per second')
-def design(design_code):
+@rate_limit(5, dt.timedelta(seconds=1))
+async def design(design_code):
 	InvalidDesignCodeError.validate(design_code)
-	return designs_api.download_design(design_code)
+	return await designs_api.download_design(design_code)
 
 def get_scale_factor():
 	scale_factor = request.args.get('scale', '1')
 	InvalidScaleFactorError.validate(scale_factor)
 	return int(scale_factor)
 
-def maybe_scale(image):
+async def maybe_scale(image):
 	scale_factor = get_scale_factor()
 	if scale_factor == 1:
 		return image
 
-	return utils.xbrz_scale_wand_in_subprocess(image, scale_factor)
+	return await utils.xbrz_scale_wand_in_subprocess(image, scale_factor)
 
-@bp.route('/design/<design_code>.tar')
-@limiter.limit('2 per 10 seconds')
-def design_archive(design_code):
-	InvalidDesignCodeError.validate(design_code)
-	render_internal = 'internal_layers' in request.args
-	get_scale_factor()  # do the validation now since apparently it doesn't work in the generator
-	data = designs_api.download_design(design_code)
-	meta, body = data['mMeta'], data['mData']
-	# pylint: disable=unused-variable
-	type_code = meta['mMtUse']
-	design_name = meta['mMtDNm']  # hungarian notation + camel case + abbreviations DO NOT mix well
+# TODO port to async
 
-	def gen():
-		# pylint: disable=no-member  # pylint are you drunk?
-		if type_code == BasicDesign.type_code or render_internal:
-			layers = designs_render.render_layers(body)
-		else:
-			layers = Design.from_data(data).layer_images.items()
+#@bp.route('/design/<design_code>.tar')
+#@limiter.limit('2 per 10 seconds')
+#def design_archive(design_code):
+#	InvalidDesignCodeError.validate(design_code)
+#	render_internal = 'internal_layers' in request.args
+#	get_scale_factor()  # do the validation now since apparently it doesn't work in the generator
+#	data = designs_api.download_design(design_code)
+#	meta, body = data['mMeta'], data['mData']
+#	# pylint: disable=unused-variable
+#	type_code = meta['mMtUse']
+#	design_name = meta['mMtDNm']  # hungarian notation + camel case + abbreviations DO NOT mix well
+#
+#	def gen():
+#		# pylint: disable=no-member  # pylint are you drunk?
+#		if type_code == BasicDesign.type_code or render_internal:
+#			layers = designs_render.render_layers(body)
+#		else:
+#			layers = Design.from_data(data).layer_images.items()
+#
+#		yield from make_tar(design_name, data['updated_at'], layers)
+#
+#	encoded_filename = urllib.parse.quote(design_name + '.tar')
+#	return current_app.response_class(
+#		stream_with_context(gen()),
+#		mimetype='application/x-tar',
+#		headers={'Content-Disposition': f"attachment; filename*=utf-8''{encoded_filename}"},
+#	)
 
-		yield from make_tar(design_name, data['updated_at'], layers)
-
-	encoded_filename = urllib.parse.quote(design_name + '.tar')
-	return current_app.response_class(
-		stream_with_context(gen()),
-		mimetype='application/x-tar',
-		headers={'Content-Disposition': f"attachment; filename*=utf-8''{encoded_filename}"},
-	)
-
-def make_tar(design_name, updated_at, layers):
-	tar = tarfile_stream.open(mode='w|')
-	yield from tar.header()
-
-	for name, image in layers:
-		tarinfo = tarfile_stream.TarInfo(f'{design_name}/{name}.png')
-		tarinfo.mtime = updated_at
-
-		image = maybe_scale(image)
-		out = io.BytesIO()
-		with image.convert('png') as c:
-			c.save(file=out)
-		tarinfo.size = out.tell()
-		out.seek(0)
-
-		yield from tar.addfile(tarinfo, out)
-
-	yield from tar.footer()
+#def make_tar(design_name, updated_at, layers):
+#	tar = tarfile_stream.open(mode='w|')
+#	yield from tar.header()
+#
+#	for name, image in layers:
+#		tarinfo = tarfile_stream.TarInfo(f'{design_name}/{name}.png')
+#		tarinfo.mtime = updated_at
+#
+#		image = maybe_scale(image)
+#		out = io.BytesIO()
+#		with image.convert('png') as c:
+#			c.save(file=out)
+#		tarinfo.size = out.tell()
+#		out.seek(0)
+#
+#		yield from tar.addfile(tarinfo, out)
+#
+#	yield from tar.footer()
 
 # no rate limit as we need to render the thumbnails for all of an author's designs quickly
 @bp.route('/design/<design_code>/<layer>.png')
-def design_layer(design_code, layer):
+async def design_layer(design_code, layer):
 	InvalidDesignCodeError.validate(design_code)
-	data = designs_api.download_design(design_code)
+	data = await designs_api.download_design(design_code)
 	meta, body = data['mMeta'], data['mData']
 	design_name = meta['mMtDNm']
 
@@ -130,7 +132,7 @@ def design_layer(design_code, layer):
 		else:
 			rendered = designs_render.render_layer(body, layer)
 
-	rendered = maybe_scale(rendered)
+	rendered = await maybe_scale(rendered)
 	out = rendered.make_blob('png')
 
 	encoded_filename = urllib.parse.quote(f'{design_name}-{layer}.png')
@@ -140,13 +142,13 @@ def design_layer(design_code, layer):
 	})
 
 @bp.route('/designs/<author_id>')
-@limiter.limit('5 per 1 seconds')
-def list_designs(author_id):
+@rate_limit(5, dt.timedelta(seconds=1))
+async def list_designs(author_id):
 	author_id = int(InvalidAuthorIdError.validate(author_id).replace('-', ''))
 	pro = request.args.get('pro', 'false')
 	InvalidProArgument.validate(pro)
 
-	page = designs_api.list_designs(author_id, pro=pro)
+	page = await designs_api.list_designs(author_id, pro=pro)
 	del page['offset'], page['count'], page['total']
 	page['designs'] = page.pop('headers')
 	page['creator_name'] = page['designs'][0]['design_player_name']
@@ -163,15 +165,15 @@ def list_designs(author_id):
 	return page
 
 @bp.route('/images', methods=['POST'])
-@limiter.limit('1 per 15s')
-def create_image():
+@rate_limit(1, dt.timedelta(seconds=15))
+async def create_image():
 	gen = format_created_design_results(create_image_gen())
 	# Note: this is currently the only method (other than the rendering methods) which does *not* return JSON.
 	# This is due to its iterative nature. I considered using JSON anyway, but very few libraries
 	# support iterative JSON decoding, and we don't need anything other than an array anyway.
 	return current_app.response_class(stream_with_context(gen), mimetype='text/plain')
 
-def create_image_gen():
+async def create_image_gen():
 	try:
 		image_name = request.values['image_name']
 	except KeyError:
@@ -182,13 +184,15 @@ def create_image_gen():
 	design_type_name = request.values.get('design_type', 'basic-design')
 	try:
 		if design_type_name == 'basic-design':
-			yield from create_basic_image(image_name, author_name)
+			async for x in create_basic_image(image_name, author_name):
+				yield x
 		else:
-			yield from create_pro_image(image_name, author_name, design_type_name)
+			async for x in create_pro_image(image_name, author_name, design_type_name):
+				yield x
 	except ACNHError as ex:
 		yield ex.to_dict()
 
-def create_pro_image(image_name, author_name, design_type_name):
+async def create_pro_image(image_name, author_name, design_type_name):
 	try:
 		layers = {
 			filename: wand.image.Image(blob=file.read()).convert('PNG')
@@ -211,9 +215,10 @@ def create_pro_image(image_name, author_name, design_type_name):
 	with contextlib.ExitStack() as stack:
 		for img in layers.values():
 			stack.enter_context(img)
-		yield from designs_db.create_image(design)
+		for x in designs_db.create_image(design):
+			yield x
 
-def create_basic_image(image_name, author_name):
+async def create_basic_image(image_name, author_name):
 	width = height = None
 
 	def get_int_value(name):
@@ -257,12 +262,13 @@ def create_basic_image(image_name, author_name):
 	)
 
 	with img:
-		yield from designs_db.create_image(design, scale=scale)
+		for x in designs_db.create_image(design, scale=scale):
+			yield x
 
-def format_created_design_results(gen, *, header=True):
+async def format_created_design_results(gen, *, header=True):
 	def maybe_error(row):
 		if isinstance(row, dict):
-			return 'error: ' + flask.json.dumps(row)
+			return 'error: ' + quart.json.dumps(row)
 		return None
 
 	if header:
@@ -270,7 +276,7 @@ def format_created_design_results(gen, *, header=True):
 		row = next(gen)
 		yield maybe_error(row) or str(row) + '\n'
 
-	for row in gen:
+	async for row in gen:
 		err = maybe_error(row)
 		if err:
 			yield err
@@ -280,10 +286,10 @@ def format_created_design_results(gen, *, header=True):
 		yield f'{int(was_quantized)},{designs_api.design_code(design_id)}\n'
 
 @bp.route('/images')
-def images():
+async def images():
 	page = parse_keyset_params()
 	rv = designs_db.images_keyset(page)
-	for i, image_info in enumerate(rv):
+	async for i, image_info in utils.aenumerate(rv):
 		rv[i] = image_info = dict(rv[i])
 		# images are meant to be anonymous, with the author identified solely by their chosen name
 		del image_info['author_id']
@@ -319,18 +325,18 @@ def parse_keyset_params():
 	return PageSpecifier(direction, reference, limit)
 
 @bp.route('/image/<image_id>')
-def image(image_id):
-	rv = designs_db.image(int(InvalidImageIdError.validate(image_id)))
+async def image(image_id):
+	rv = await designs_db.image(int(InvalidImageIdError.validate(image_id)))
 	# images are meant to be anonymous, with the author identified solely by their chosen name
 	del rv['image']['author_id']
 	rv['image']['design_type'] = Design(rv['image'].pop('type_code')).name
 	return rv
 
 @bp.route('/image/<image_id>.tar')
-@limiter.limit('2 per 10 seconds')
-def image_archive(image_id):
+@rate_limit(2, dt.timedelta(seconds=10))
+async def image_archive(image_id):
 	image_id = int(InvalidImageIdError.validate(image_id))
-	image_info = designs_db.image(image_id)['image']
+	image_info = (await designs_db.image(image_id))['image']
 	render_internal = 'internal_layers' in request.args
 	layers = {}
 	cls = Design(image_info['type_code'])
@@ -360,17 +366,17 @@ def image_archive(image_id):
 	)
 
 @bp.route('/image/<image_id>/refresh', methods=['POST'])
-def refresh_image(image_id):
+async def refresh_image(image_id):
 	gen = stream_with_context(format_created_design_results(_refresh_image(image_id), header=False))
 	return current_app.response_class(gen, mimetype='text/plain')
 
-def _refresh_image(image_id):
-	return designs_db.refresh_image(int(InvalidImageIdError.validate(image_id)))
+async def _refresh_image(image_id):
+	return await designs_db.refresh_image(int(InvalidImageIdError.validate(image_id)))
 
 @bp.route('/image/<image_id>', methods=['DELETE'])
-def delete_image(image_id):
+async def delete_image(image_id):
 	image_id = int(InvalidImageIdError.validate(image_id))
-	designs_db.delete_image(image_id)
+	await designs_db.delete_image(image_id)
 	return jsonify('OK')
 
 @bp.errorhandler(HTTPException)

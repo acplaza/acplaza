@@ -3,18 +3,18 @@
 
 from glob import glob
 
-from flask import Flask
+from quart import Quart
 
 import utils
 import acnh.common
 import views.api
 import views.frontend
 
-app = Flask(__name__)
+app = Quart(__name__)
 utils.init_app(app)
 acnh.common.init_app(app)
 views.frontend.init_app(app)
 views.api.init_app(app)
 
 if __name__ == '__main__':
-	app.run(use_reloader=True, extra_files=glob('templates/**.html', recursive=True) + ['queries.sql'])
+	app.run(use_reloader=True)

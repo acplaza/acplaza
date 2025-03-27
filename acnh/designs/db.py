@@ -7,8 +7,9 @@ from dataclasses import dataclass, field
 from functools import partial
 from typing import List, Generic, TypeVar, Optional
 
+import anyio
 import wand.image
-from flask import request
+from quart import request
 
 from . import api, encode
 from .format import SIZE, MAX_DESIGN_TILES
@@ -53,43 +54,44 @@ class PageSpecifier(Generic[T]):
 	def before(cls, reference: T) -> 'PageSpecifier[T]':
 		return cls(PageDirection.before, reference)
 
-def garbage_collect_designs(needed_slots: int, *, pro: bool):
+async def garbage_collect_designs(needed_slots: int, *, pro: bool):
 	"""Free at least needed_slots. Pass pro depending on whether Pro slots are needed."""
-	design_ids = [hdr['id'] for hdr in api.stale_designs(needed_slots, pro=pro)]
+	design_ids = [hdr['id'] for hdr in await api.stale_designs(needed_slots, pro=pro)]
 	if not design_ids:
 		return
 
 	print('GC', len(design_ids), 'designs')
+	# we would do this in parallel but we'd rather not get banned lol
 	for design_id in design_ids:
-		api.delete_design(design_id)
+		await api.delete_design(design_id)
 
-	tag = pg().execute(queries.delete_designs(), design_ids)
+	tag = await current_app.pg.execute(queries.delete_designs(), design_ids)
 	if tag != f'DELETE {len(design_ids)}':
 		print('One or more stale design IDs were found in the API but not in the database! Ignoring…')
 
-def delete_image(image_id):
-	image_author_id = pg().fetchval(queries.image_author_id(), image_id)
+async def delete_image(image_id):
+	image_author_id = await current_app.pg.fetchval(queries.image_author_id(), image_id)
 	valid = image_author_id == request.user_id
 	if image_author_id is None:
 		raise UnknownImageIdError
 	if not valid:
 		raise DeletionDeniedError
 
-	with pg().transaction(isolation='serializable'):
-		design_ids = pg().fetchvals(queries.delete_image_designs(), image_id)
-		pg().execute(queries.delete_image(), image_id)
+	async with current_app.pg.transaction(isolation='serializable'):
+		design_ids = await current_app.pg.fetchvals(queries.delete_image_designs(), image_id)
+		await current_app.pg.execute(queries.delete_image(), image_id)
 
 	for design_id in design_ids:
-		api.delete_design(design_id)
+		await api.delete_design(design_id)
 
-def create_image(design, **kwargs):
-	return (create_pro_design if design.pro else create_basic_design)(design, **kwargs)
+async def create_image(design, **kwargs):
+	return await (create_pro_design if design.pro else create_basic_design)(design, **kwargs)
 
-def create_pro_design(design):
+async def create_pro_design(design):
 	"""Upload a pro design. Returns an iterable for consistency with create_basic_design."""
 	was_quantized, encoded = encode.encode(design)
-	garbage_collect_designs(1, pro=True)
-	image_id = pg().fetchval(
+	await garbage_collect_designs(1, pro=True)
+	image_id = await current_app.pg.fetchval(
 		queries.create_image(),
 
 		request.user_id,
@@ -101,18 +103,18 @@ def create_pro_design(design):
 		design.type_code,
 		[bytearray(image.export_pixels()) for image in design.layer_images.values()],
 	)
-	design_id = api.create_design(encoded)
-	create_design(image_id=image_id, design_id=design_id, position=1, pro=True)
+	design_id = await api.create_design(encoded)
+	await create_design(image_id=image_id, design_id=design_id, position=1, pro=True)
 	yield image_id
 	yield was_quantized, design_id
 
-def create_basic_design(design, *, scale: bool):
+async def create_basic_design(design, *, scale: bool):
 	"""Upload a basic design. Scale controls whether to tile or scale the image. Returns an iterable of design IDs."""
 	image = design.layer_images['0']
 	images = split_images(design, scale=scale)
 
 	# XXX is it a Design class or an Image class. It's both! Is that OK?
-	image_id = pg().fetchval(
+	image_id = await current_app.pg.fetchval(
 		queries.create_image(),
 
 		request.user_id,
@@ -127,10 +129,11 @@ def create_basic_design(design, *, scale: bool):
 	yield image_id
 	# backwards so that the first image shows up first in game
 	images = list(zip(reversed(range(1, len(images) + 1)), reversed(images)))
-	yield from create_designs(image_id, design, images, tile=not scale)
+	async for x in create_designs(image_id, design, images, tile=not scale):
+		yield x
 
-def create_designs(image_id, design, images, *, tile: bool):
-	garbage_collect_designs(len(images), pro=False)
+async def create_designs(image_id, design, images, *, tile: bool):
+	await garbage_collect_designs(len(images), pro=False)
 	for count, (i, image) in enumerate(images, 1):
 		design_name = f'{design.design_name} {i}' if tile else design.design_name
 		sub_design = encode.BasicDesign(
@@ -140,12 +143,12 @@ def create_designs(image_id, design, images, *, tile: bool):
 			layers={'0': image},
 		)
 		# we do this on each loop in case someone uploaded a few more designs in between iterations
-		garbage_collect_designs(len(images) - (count - 1), pro=False)
+		await garbage_collect_designs(len(images) - (count - 1), pro=False)
 		# designs get out of order if we post them too fast
-		time.sleep(0.5)
+		await anyio.sleep(0.5)
 		was_quantized, encoded = encode.encode(sub_design)
-		design_id = api.create_design(encoded)
-		create_design(image_id=image_id, design_id=design_id, position=i, pro=False)
+		design_id = await api.create_design(encoded)
+		await create_design(image_id=image_id, design_id=design_id, position=i, pro=False)
 		yield was_quantized, design_id
 
 def split_images(design: encode.BasicDesign, *, scale: bool):
@@ -158,19 +161,22 @@ def split_images(design: encode.BasicDesign, *, scale: bool):
 	# scale if necessary
 	return [image.clone()]
 
-def refresh_image(image_id):
-	rows = pg().fetch(queries.image_with_designs(), image_id)
+async def refresh_image(image_id):
+	rows = await current_app.pg.fetch(queries.image_with_designs(), image_id)
 	if not rows:
 		raise UnknownImageIdError
-	image_info = rows[0]
+	image_info ,= rows
 	required_design_count = 1 if image_info['pro'] else num_tiles(image_info['width'], image_info['height'])
 	if len(rows) == required_design_count:
-		return None
+		return
 
 	if image_info['pro']:
-		yield from refresh_pro_image(image_info)
+		gen = refresh_pro_image(image_info)
 	else:
-		yield from refresh_basic_image(rows)
+		gen = refresh_basic_image(rows)
+
+	for x in gen:
+		yield x
 
 def gather_layers(cls, layers: List[wand.image.Image]):
 	named_layers = {}
@@ -179,15 +185,15 @@ def gather_layers(cls, layers: List[wand.image.Image]):
 		img.import_pixels(data=blob, channel_map='RGBA')
 	return named_layers
 
-def refresh_pro_image(image_info):
+async def refresh_pro_image(image_info):
 	cls = encode.Design(image_info['type_code'])
 	layers = gather_layers(cls, image_info['layers'])
 
 	# pylint: disable=not-callable
 	design = cls(layers=layers, island_name=island_name(), design_name=image_info['image_name'])
 	was_quantized, encoded = encode.encode(design)
-	design_id = api.create_design(encoded)
-	create_design(image_id=image_info['image_id'], design_id=design_id, position=0, pro=True)
+	design_id = await api.create_design(encoded)
+	await create_design(image_id=image_info['image_id'], design_id=design_id, position=0, pro=True)
 	yield was_quantized, design_id
 
 def refresh_basic_image(rows):
@@ -205,11 +211,11 @@ def refresh_basic_image(rows):
 	to_create = [(i, img) for i, img in enumerate(images, 1) if i in missing_positions]
 	yield from create_designs(image_info['image_id'], design, to_create, tile=image_info['mode'] == 'tile')
 
-def create_design(*, image_id, design_id, position, pro):
-	pg().execute(queries.create_design(), image_id, design_id, position, pro)
+async def create_design(*, image_id, design_id, position, pro):
+	await current_app.pg.execute(queries.create_design(), image_id, design_id, position, pro)
 
-def image(image_id):
-	rows = pg().fetch(queries.image_with_designs(), image_id)
+async def image(image_id):
+	rows = await current_app.pg.fetch(queries.image_with_designs(), image_id)
 	if not rows:
 		raise UnknownImageIdError
 	image = dict(rows[0])
@@ -227,7 +233,7 @@ ImageId = int
 
 MAX_PAGE_SIZE = MAX_DESIGN_TILES
 
-def images_keyset(page: PageSpecifier[ImageId] = PageSpecifier.first(), *, debug=False):
+async def images_keyset(page: PageSpecifier[ImageId] = PageSpecifier.first(), *, debug=False):
 	limit = page.limit
 	if limit is None:
 		limit = MAX_PAGE_SIZE
@@ -241,11 +247,11 @@ def images_keyset(page: PageSpecifier[ImageId] = PageSpecifier.first(), *, debug
 	if debug:
 		return queries.images_keyset(**kwargs), args
 
-	images = pg().fetch(queries.images_keyset(**kwargs), *args)
+	images = await current_app.pg.fetch(queries.images_keyset(**kwargs), *args)
 	if page.direction is PageDirection.before:
 		images.reverse()
 	return images
 
 @api.accepts_design_id
-def design_image(design_id):
-	return pg().fetchrow(queries.design_image(), design_id)
+async def design_image(design_id):
+	return await current_app.pg.fetchrow(queries.design_image(), design_id)

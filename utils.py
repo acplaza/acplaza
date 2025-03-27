@@ -10,16 +10,17 @@ import subprocess
 import os
 import sys
 import urllib.parse
+from functools import partial
 
-import flask.json
 import jinja2
 import wand.image
-import toml
+import qtoml as toml
 import asyncpg
-import syncpg
-from flask import current_app, g, request, session, url_for
-from flask_wtf.csrf import CSRFProtect
-from flask_limiter import Limiter
+from quart import current_app, g, request, session, url_for
+from quart.json.provider import DefaultJSONProvider
+from quart_wtf.csrf import CSRFProtect
+from quart_rate_limiter import RateLimiter
+from quart_db import QuartDB
 
 from acnh.errors import ACNHError, MissingUserAgentStringError, IncorrectAuthorizationError
 
@@ -43,34 +44,26 @@ def limiter_key():
 
 	return get_ipaddr()
 
-limiter = Limiter(key_func=limiter_key)
-
-if os.name != 'nt':
-	# this is pretty gay but it's necessary to make uwsgi work since sys.executable is uwsgi otherwise
-	sys.executable = subprocess.check_output('which python3', shell=True, encoding='utf-8').rstrip()
+limiter = RateLimiter(key_function=limiter_key)
 
 def init_app(app):
 	csrf = CSRFProtect(app)
 	import views.api  # resolve circular import
 	csrf.exempt(views.api.bp)
-	app.secret_key = config['flask-secret-key']
-	app.config['JSON_SORT_KEYS'] = False
+	app.secret_key = config['web-server-secret-key']
+	#app.config['JSON_SORT_KEYS'] = False
 	app.config['SESSION_COOKIE_SAMESITE'] = 'Strict'
-	app.json_encoder = CustomJSONEncoder
-	app.teardown_appcontext(close_pgconn)
+	app.json = CustomJSONProvider(app)
 	app.before_request(process_authorization)
 	app.errorhandler(ACNHError)(handle_acnh_exception)
 	limiter.init_app(app)
 	token_exempt(app.send_static_file)
 
-def pg():
-	with contextlib.suppress(AttributeError):
-		return g.pg
+	app.while_serving(pg)
 
-	asyncio.set_event_loop(asyncio.new_event_loop())
-	pg = syncpg.connect(**config['postgres-db'])
-	g.pg = pg
-	return pg
+async def pg():
+	async with asyncpg.create_pool(**config['postgres-db']) as current_app.pg:
+		yield
 
 token_exempt_views = set()
 
@@ -78,7 +71,7 @@ def token_exempt(view):
 	token_exempt_views.add(view.__module__ + '.' + view.__name__)
 	return view
 
-def process_authorization():
+async def process_authorization():
 	request.user_id = None
 
 	if not request.endpoint:
@@ -108,13 +101,13 @@ def process_authorization():
 
 	request.user_id = user_id
 
-def validate_token(token):
+async def validate_token(token):
 	try:
 		user_id, secret = parse_token(token)
 	except ValueError:
 		return False
 
-	db_secret = pg().fetchval(queries.secret(), user_id)
+	db_secret = await g.connection.fetch_val(queries.secret(), user_id)
 	if db_secret is None:
 		return False
 
@@ -134,19 +127,13 @@ def parse_token(token):
 	secret += b'=' * (-len(secret) % 4)
 	return int(id), base64.urlsafe_b64decode(secret)
 
-def close_pgconn(_):
-	with contextlib.suppress(AttributeError):
-		g.pg.close()
-
 queries = jinja2.Environment(
 	loader=jinja2.FileSystemLoader('.'),
 	line_statement_prefix='-- :',
 ).get_template('queries.sql').module
 
-class CustomJSONEncoder(flask.json.JSONEncoder):
-	def __init__(self, **kwargs):
-		kwargs['ensure_ascii'] = False
-		super().__init__(**kwargs)
+class CustomJSONProvider(DefaultJSONProvider):
+	ensure_ascii = False
 
 	def default(self, o):
 		if isinstance(o, bytes):
@@ -157,16 +144,16 @@ class CustomJSONEncoder(flask.json.JSONEncoder):
 			return dict(o)
 		return super().default(o)
 
-def xbrz_scale_wand_in_subprocess(img: wand.image.Image, factor):
+async def xbrz_scale_wand_in_subprocess(img: wand.image.Image, factor):
 	data = bytearray(img.export_pixels(channel_map='RGBA', storage='char'))
 
-	p = subprocess.Popen(
-		[sys.executable, '-m', 'xbrz', *map(str, (factor, *img.size))],
+	p = await asyncio.create_subprocess_exec(
+		sys.executable, '-m', 'xbrz', *map(str, (factor, *img.size)),
 		stdin=subprocess.PIPE,
 		stdout=subprocess.PIPE,
 		stderr=subprocess.PIPE,
 	)
-	stdout, stderr = p.communicate(data)
+	stdout, stderr = await p.communicate(data)
 	if stderr and p.returncode:
 		raise RuntimeError(stderr.decode('utf-8'))
 
@@ -186,13 +173,6 @@ def handle_acnh_exception(ex):
 	response.content_type = 'application/json'
 	return response
 
-def stream_template(template_name, **context):
-	current_app.update_template_context(context)
-	t = current_app.jinja_env.get_template(template_name)
-	rv = t.stream(context)
-	rv.disable_buffering()
-	return current_app.response_class(rv)
-
 def is_safe_url(target, *, _allowed_schemes=frozenset({'http', 'https'})):
 	ref_url = urllib.parse.urlparse(request.host_url)
 	test_url = urllib.parse.urlparse(urllib.parse.urljoin(request.host_url, target))
@@ -208,3 +188,9 @@ def get_redirect_target():
 			continue
 		if is_safe_url(target):
 			return target
+
+async def aenumerate(xs):
+	i = 0
+	async for x in xs:
+		yield i, x
+		i += 1

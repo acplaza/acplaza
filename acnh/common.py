@@ -1,4 +1,4 @@
-# © 2020 io mintz <io@mintz.cc>
+# © io
 
 # Based on code provided by Yannik Marchand under the MIT License.
 # Copyright (c) 2017 Yannik Marchand
@@ -24,51 +24,58 @@
 import contextlib
 import functools
 import urllib.parse
+import ssl
 
 import msgpack
-import toml
-import requests
-from flask import g, request
+import qtoml as toml
+#import requests
+from quart import current_app, g, request
+import anynet.http
+import anynet.tls
 
-from nintendo.baas import BAASClient
-from nintendo.dauth import DAuthClient
-from nintendo.aauth import AAuthClient
-from nintendo.switch import ProdInfo, KeySet
+from nintendo.switch.baas import BAASClient
+from nintendo.switch.dauth import DAuthClient, CLIENT_ID_DRAGONS, CLIENT_ID_BAAS
+from nintendo.switch.aauth import AAuthClient
+from nintendo.switch.dragons import DragonsClient
+from nintendo.switch import load_keys
+from nintendo.nex import settings
 from nintendo.nex.backend import BackEndClient
 from nintendo.nex.authentication import AuthenticationInfo
-from nintendo.games import ACNH
-from nintendo.settings import Settings
 
 from .utils import load_cached
 
 def init_app(app):
-	app.teardown_appcontext(close_clients)
-	app.after_request(close_backend)
+	app.while_serving(acnh)
 
 # this is here to resolve circular imports
 # pylint: disable=wrong-import-position
 from utils import config
 
-SYSTEM_VERSION = 1003  # 10.0.3
-HOST = 'g%08x-lp1.s.n.srv.nintendo.net' % ACNH.GAME_SERVER_ID
+TITLE_ID = 0x01006F8002326000
+TITLE_VERSION = 0x1C0000
+
+SYSTEM_VERSION = 1901  # 19.0.1
+GAME_SERVER_ID = 0x2EE2E300
+NEX_VERSION = 40604
+CLIENT_VERSION = 2
+ACCESS_KEY = 'v43a10em'
+HOST = 'g%08x-lp1.s.n.srv.nintendo.net' % GAME_SERVER_ID
+CLIENT_VERSION = 2
 PORT = 443
 
-keys = KeySet(config['keyset-path'])
-prodinfo = ProdInfo(keys, config['prodinfo-path'])
+keys = load_keys(config['keyset-path'])
 
-cert = prodinfo.get_ssl_cert()
-pkey = prodinfo.get_ssl_key()
+with open(config['device-cert-path']) as f:
+	cert = anynet.tls.TLSCertificate.parse(f.read(), anynet.tls.TYPE_PEM)
 
-with open(config['ticket-path'], 'rb') as f:
-	ticket = f.read()
-
-backend_settings = Settings('switch.cfg')
+with open(config['device-key-path']) as f:
+	pkey = anynet.tls.TLSPrivateKey.parse(f.read(), anynet.tls.TYPE_PEM)
 
 class ACNHClient:
 	BASE = 'https://api.hac.lp1.acbaa.srv.nintendo.net'
 	HEADERS = {
-		'User-Agent': 'libcurl/7.64.1 (HAC; nnEns; SDK 9.3.4.0)',
 		'Host': urllib.parse.urlparse(BASE).netloc,
+		'User-Agent': 'libcurl/7.64.1 (HAC; nnEns; SDK 10.9.8.0)',
 		'Accept': '*/*',
 	}
 	# note: OPTIONS can technically have an request body, but it's not specified what that means,
@@ -77,135 +84,128 @@ class ACNHClient:
 
 	def __init__(self, token):
 		self.token = token
-		self.session = requests.Session()
-		self.session.headers.clear()
-		self.session.headers.update(self.HEADERS)
-		self.session.headers['Authorization'] = 'Bearer ' + token
-		self.session.verify = 'data/nintendo-ca.crt'
+		self.headers = self.HEADERS.copy()
+		self.headers['Authorization'] = 'Bearer ' + token
 
-	def request(self, method, path, **kwargs):
-		headers = {}
-		if method in self.REQUEST_METHODS_WITH_BODIES:
-			headers['Content-Type'] = 'application/x-msgpack'
+	async def request(self, request):
+		# allow fetching host-free URLs
+		if not request.path.startswith(self.BASE):
+			request.path = self.BASE + request.path
+		request.headers.update(self.headers)
+		if request.method in self.REQUEST_METHODS_WITH_BODIES:
+			request.headers['Content-Type'] = 'application/x-msgpack'
 
-		# allow fetching absolute URLs
-		if not path.startswith(self.BASE):
-			path = self.BASE + path
+		return await self.http_client.request(request)
 
-		return self.session.request(method, path, headers=headers, **kwargs)
+	async def __aenter__(self):
+#		ctx = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
+#		ctx.load_cert_chain(cafile='data/nintendo-ca.crt')
+		tls_client = await anynet.tls.connect(self.headers['Host'], 443).__aenter__()
+		self.http_client = anynet.http.HTTPClient(tls_client)
+		return self
 
-	def __enter__(self):
-		return self.session.__enter__()
+	async def __aexit__(self, *excinfo):
+		await self.close()
 
-	def __exit__(self, *excinfo):
-		return self.session.__exit__(*excinfo)
+	async def close(self):
+		await self.http_client.close()
 
-	def close(self):
-		self.session.close()
-
-gfuncs = []
-
-def close_clients(_):
-	for f in gfuncs:
-		with contextlib.suppress(AttributeError):
-			getattr(g, f.__name__).close()
-
-def gfunc(func):
+def appfunc(func):
 	@functools.wraps(func)
-	def wrapped():
+	async def wrapped():
 		try:
-			return getattr(g, func.__name__)
+			return getattr(current_app, func.__name__)
 		except AttributeError:
-			rv = func()
-			setattr(g, func.__name__, rv)
+			rv = await func()
+			setattr(current_app, func.__name__, rv)
 			return rv
 
-	gfuncs.append(wrapped)
 	return wrapped
 
-@gfunc
-def dauth():
+@appfunc
+async def dauth():
 	dauth = DAuthClient(keys)
 	dauth.set_certificate(cert, pkey)
 	dauth.set_system_version(SYSTEM_VERSION)
 	return dauth
 
-@gfunc
-def aauth():
+@appfunc
+async def dragons():
+	dragons = DragonsClient()
+	dragons.set_certificate(cert, pkey)
+	dragons.set_system_version(SYSTEM_VERSION)
+	return dragons
+
+@appfunc
+async def aauth():
 	aauth = AAuthClient()
 	aauth.set_system_version(SYSTEM_VERSION)
 	return aauth
 
-@gfunc
-def baas():
+@appfunc
+async def baas():
 	baas = BAASClient()
 	baas.set_system_version(SYSTEM_VERSION)
-	baas.authenticate(device_token())
+	#await baas.authenticate(device_token())
 	return baas
 
-@gfunc
-def acnh():
-	_, id_token = baas_credentials()
+async def acnh():
+	_, id_token = await baas_credentials()
 	acnh = ACNHClient(id_token)
-	acnh_token_ = acnh_token(acnh)
-	try:
-		return ACNHClient(acnh_token_)
-	finally:
-		acnh.close()
+	acnh_token_ = await acnh_token(acnh)
+	async with ACNHClient(acnh_token_) as current_app.acnh:
+		yield
 
 def backend():
-	with contextlib.suppress(AttributeError):
-		return request.backend
+	raise NotImplementedError
 
-	backend = BackEndClient(backend_settings)
-	backend.configure(ACNH.ACCESS_KEY, ACNH.NEX_VERSION, ACNH.CLIENT_VERSION)
+async def device_token_dragons():
+	async def cb(): return (await (await dauth()).device_token(CLIENT_ID_DRAGONS))['device_auth_token']
+	return await load_cached('tokens/dauth-dragons.txt', cb)
 
-	# connect to game server
-	backend.connect(HOST, PORT)
+async def device_token_baas():
+	async def cb(): return (await (await dauth()).device_token(CLIENT_ID_BAAS))['device_auth_token']
+	return await load_cached('tokens/dauth-baas.txt', cb)
 
-	# log in on game server
-	user_id, id_token = baas_credentials()
-	auth_info = AuthenticationInfo()
-	auth_info.token = id_token
-	auth_info.ngs_version = 4  # Switch
-	auth_info.token_type = 2
-	backend.login(str(user_id), auth_info=auth_info)
+async def contents_token():
+	async def cb(): return (await (await dragons()).contents_authorization_token_for_aauth(
 
-	request.backend = backend
-	return backend
+		await device_token_dragons(),
+		config['elicense-id'],
+		config['na-id'],
+		TITLE_ID,
+	))['contents_authorization_token']
+	return await load_cached('tokens/contents-token.txt', cb)
 
-def close_backend(response):
-	with contextlib.suppress(AttributeError):
-		request.backend.close()
-	return response
+async def aauth_token():
+	async def cb(): return (await (await aauth()).auth_digital(TITLE_ID, TITLE_VERSION, await device_token_baas(), await contents_token()))['application_auth_token']
+	return await load_cached('tokens/aauth-token.txt', cb)
 
-def device_token():
-	return load_cached('tokens/dauth-token.txt', lambda: dauth().device_token()['device_auth_token'])
+async def anonymous_baas_credentials():
+	async def cb(): return (await (await baas()).authenticate(await device_token_baas(), config['penne-id']))['accessToken']
+	return await load_cached('tokens/anonymous-baas.txt', cb)
 
-def aauth_token():
-	return load_cached('tokens/aauth-token.txt', lambda: aauth().auth_digital(
-		ACNH.TITLE_ID, ACNH.TITLE_VERSION,
-		device_token(), ticket
-	)['application_auth_token'])
-
-def baas_credentials():
-	def get_credentials():
-		resp = baas().login(config['baas-user-id'], config['baas-password'], aauth_token())
+async def baas_credentials():
+	async def get_credentials():
+		resp = await (await baas()).login(config['baas-user-id'], config['baas-password'], await anonymous_baas_credentials(), await aauth_token(), config['na-country'])
 		return toml.dumps({'user-id': int(resp['user']['id'], base=16), 'id-token': resp['idToken']})
 
-	resp = toml.loads(load_cached('tokens/baas-credentials.txt', get_credentials, duration=2.5 * 60 * 60))
+	resp = toml.loads(await load_cached('tokens/baas-credentials.txt', get_credentials, duration=2.5 * 60 * 60))
 	return resp['user-id'], resp['id-token']
 
-def acnh_token(acnh):
-	def get_acnh_token():
-		resp = acnh.request('POST', '/api/v1/auth_token', data=msgpack.dumps({
+async def acnh_token(acnh):
+	async def get_acnh_token():
+		req = anynet.http.HTTPRequest.post('/api/v1/auth_token')
+		req.body = msgpack.dumps({
 			'id': config['acnh-user-id'],
 			'password': config['acnh-password'],
-		}))
-		resp.raise_for_status()
-		return resp.content
+		})
+		async with acnh:
+			resp = await acnh.request(req)
+		resp.raise_if_error()
+		return resp.body
 
-	resp = msgpack.loads(load_cached(
+	resp = msgpack.loads(await load_cached(
 		'tokens/acnh-token.msgpack',
 		get_acnh_token,
 		duration=5 * 60 * 60,

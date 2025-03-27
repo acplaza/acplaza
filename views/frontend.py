@@ -3,9 +3,11 @@
 import datetime as dt
 from http import HTTPStatus
 
+import anyio
+import anynet.http
 import msgpack
 import wand.image
-from flask import (
+from quart import (
 	abort,
 	Blueprint,
 	render_template,
@@ -17,6 +19,7 @@ from flask import (
 	flash,
 )
 from werkzeug.exceptions import HTTPException
+from quart_rate_limiter import rate_limit
 
 import utils
 from views import api
@@ -33,7 +36,6 @@ from acnh.designs import api as designs_api
 from acnh.designs import encode as designs_encode
 from acnh.designs import db as designs_db
 from acnh.designs.format import MAX_DESIGN_TILES
-from utils import limiter
 
 def init_app(app):
 	app.register_blueprint(bp)
@@ -46,26 +48,26 @@ def init_app(app):
 		"This design had to be quantized to fit the game's 16 color limit.",
 		name='quantized_message',
 	)
-	app.add_template_global(__import__('time').sleep)
+	app.add_template_global(anyio.sleep)
 
 bp = Blueprint('frontend', __name__)
 
 @bp.route('/about')
 @utils.token_exempt
-def about():
-	return render_template('about.html')
+async def about():
+	return await render_template('about.html')
 
 @bp.route('/login')
 @utils.token_exempt
-def login_form():
+async def login_form():
 	if session.get('user_id'):
 		return redirect('/')
-	return render_template('login.html')
+	return await render_template('login.html')
 
 @bp.route('/login', methods=['POST'])
 @utils.token_exempt
-@limiter.limit('1 per 5 seconds')
-def login():
+@rate_limit(1, dt.timedelta(seconds=5))
+async def login():
 	try:
 		token = request.form['token']
 	except KeyError:
@@ -87,13 +89,13 @@ def login():
 
 @bp.route('/logout')
 @utils.token_exempt
-def logout():
+async def logout():
 	session.clear()
 	return redirect('/')
 
 @bp.route('/')
 @utils.token_exempt
-def index():
+async def index():
 	if not session.get('user_id'):
 		return redirect(url_for('.login'))
 	# pylint: disable=no-member
@@ -105,57 +107,57 @@ def index():
 	)
 
 @bp.route('/host-session/')
-def host_session_form():
+async def host_session_form():
 	try:
 		return redirect(url_for('.host_session', dodo_code=request.args['dodo_code']))
 	except KeyError:
 		return redirect('/')
 
 @bp.route('/host-session/<dodo_code>')
-@limiter.limit('1 per 4 seconds')
-def host_session(dodo_code):
+@rate_limit(1, dt.timedelta(seconds=4))
+async def host_session(dodo_code):
 	data = dodo.search_dodo_code(dodo_code)
-	return render_template('host_session.html', **data)
+	return await render_template('host_session.html', **data)
 
 @bp.route('/design/')
-def design_form():
+async def design_form():
 	try:
 		return redirect(url_for('.design', design_code=request.args['design_code']))
 	except KeyError:
 		return redirect('/')
 
 @bp.route('/designs/')
-def designs_form():
+async def designs_form():
 	try:
 		return redirect(url_for('.basic_designs', author_id=request.args['author_id']))
 	except KeyError:
 		return redirect('/')
 
 bp.route('/design/<design_code>/<layer>.png')(api.design_layer)
-bp.route('/design/<design_code>.tar')(api.design_archive)
-bp.route('/image/<image_id>.tar')(api.image_archive)
+#bp.route('/design/<design_code>.tar')(api.design_archive)
+#bp.route('/image/<image_id>.tar')(api.image_archive)
 
 @bp.route('/design/<design_code>')
-@limiter.limit('2 per 10 seconds')
-def design(design_code):
-	image_info = designs_db.design_image(design_code)
+@rate_limit(2, dt.timedelta(seconds=10))
+async def design(design_code):
+	image_info = await designs_db.design_image(design_code)
 	if image_info and image_info['designs_required'] == 1:
 		return redirect(url_for('.image', image_id=image_info['image_id']))
 
-	data = designs_api.download_design(design_code)
+	data = await designs_api.download_design(design_code)
 	meta = data['mMeta']
 	design_name = meta['mMtDNm']
 
 	design = designs_encode.Design.from_data(data)
 
-	def gen():
+	async def gen():
 		for name, image in design.layer_images.items():
 			yield (
 				name.capitalize().replace('-', ' '),
 				utils.image_to_base64_url(utils.xbrz_scale_wand_in_subprocess(image, 6)),
 			)
 
-	return utils.stream_template(
+	return await render_template(
 		'design.html',
 		created_at=dt.datetime.utcfromtimestamp(data['created_at']),
 		image_id=image_info and image_info['image_id'],
@@ -171,16 +173,16 @@ def design(design_code):
 	)
 
 @bp.route('/designs/<author_id>')
-@limiter.limit('5 per 25 seconds')
-def basic_designs(author_id):
-	return designs(author_id, pro=False)
+@rate_limit(5, dt.timedelta(seconds=25))
+async def basic_designs(author_id):
+	return await designs(author_id, pro=False)
 
 @bp.route('/pro-designs/<author_id>')
-@limiter.limit('5 per 25 seconds')
-def pro_designs(author_id):
-	return designs(author_id, pro=True)
+@rate_limit(5, dt.timedelta(seconds=25))
+async def pro_designs(author_id):
+	return await designs(author_id, pro=True)
 
-def designs(author_id, *, pro):
+async def designs(author_id, *, pro):
 	author_id = int(InvalidAuthorIdError.validate(author_id).replace('-', ''))
 	pretty_author_id = designs_api.add_hyphens(str(author_id))
 	data = designs_api.list_designs(author_id, pro=pro, with_binaries=True)
@@ -192,9 +194,11 @@ def designs(author_id, *, pro):
 
 	author_name = data['headers'][0]['design_player_name']
 
-	def designs():
+	async def designs():
 		for header in data['headers']:
-			design_data = msgpack.loads(acnh().request('GET', header['body']).content)
+			req = anynet.http.HTTPRequest.get(header['body'])
+			resp = await current_app.acnh.request(req)
+			design_data = msgpack.loads(resp.body)
 			designs_api.merge_headers(design_data, header)
 			design_code = designs_api.design_code(header['id'])
 			net_image = designs_encode.Design.from_data(design_data).net_image()
@@ -204,7 +208,7 @@ def designs(author_id, *, pro):
 				utils.image_to_base64_url(net_image),
 			)
 
-	return utils.stream_template(
+	return await render_template(
 		'designs.html',
 		author_id=pretty_author_id,
 		author_name=author_name,
@@ -214,38 +218,38 @@ def designs(author_id, *, pro):
 	)
 
 @bp.route('/create-design')
-def pick_design_type_form():
-	return render_template('pick_design_type.html', design_categories=designs_encode.Design.categories)
+async def pick_design_type_form():
+	return await render_template('pick_design_type.html', design_categories=designs_encode.Design.categories)
 
 @bp.route('/create-design/basic-design')
-def create_basic_design_form():
-	return render_template('create_basic_design_form.html')
+async def create_basic_design_form():
+	return await render_template('create_basic_design_form.html')
 
 @bp.route('/create-design/<_>', methods=['POST'])
-@limiter.limit('1 per 15 seconds')
-def create_image(_):
+@rate_limit(1, dt.timedelta(seconds=15))
+async def create_image(_):
 	gen = stream_with_context(api.create_image_gen())
 	image_id = next(gen)
-	return utils.stream_template(
+	return await render_template(
 		'created_image.html', image_id=image_id, results=format_created_designs_gen(gen), verb='created',
 	)
 
-def format_created_designs_gen(gen):
-	for was_quantized, design_id in gen:
+async def format_created_designs_gen(gen):
+	async for was_quantized, design_id in gen:
 		yield was_quantized, designs_api.design_code(design_id)
 
 @bp.route('/create-design/<design_type_name>')
-def create_pro_design_form(design_type_name):
+async def create_pro_design_form(design_type_name):
 	try:
 		cls = designs_encode.Design(design_type_name)
 	except KeyError:
 		return redirect('/create-design')
 
-	return render_template('create_design_form.html', cls=cls)
+	return await render_template('create_design_form.html', cls=cls)
 
 @bp.route('/image/<image_id>')
 @utils.token_exempt
-def image(image_id):
+async def image(image_id):
 	image_id = int(api.InvalidImageIdError.validate(image_id))
 	data = designs_db.image(image_id)
 	image_info = data['image']
@@ -258,14 +262,12 @@ def image(image_id):
 		# pylint: disable=not-callable
 		design = cls(layers=layers, **cls_kwargs)
 
-		layers = stream_with_context(
-			(
-				name.capitalize().replace('-', ' '),
-				utils.image_to_base64_url(utils.xbrz_scale_wand_in_subprocess(image, 6))
-			)
-			for name, image
-			in design.layer_images.items()
-		)
+		@stream_with_context
+		async def gen():
+			for name, image in design.layer_images.items():
+				yield name.capitalize().replace('-', ' '), utils.image_to_base64_url(await utils.xbrz_scale_wand_in_subprocess(image, 6))
+
+		layers = gen()
 	else:
 		img = wand.image.Image(width=image_info['width'], height=image_info['height'])
 		img.import_pixels(data=image_info['layers'][0], channel_map='RGBA')
@@ -273,9 +275,14 @@ def image(image_id):
 			img = utils.xbrz_scale_wand_in_subprocess(img, 6)
 		# pylint: disable=not-callable
 		design = cls(**cls_kwargs, layers={'0': img})
-		layers = stream_with_context([('0', utils.image_to_base64_url(img))])
 
-	return utils.stream_template(
+		@stream_with_context
+		async def gen():
+			yield '0', utils.image_to_base64_url(img)
+
+		layers = gen()
+
+	return await render_template(
 		'image.html',
 		image=image_info, design=design, layers=layers, designs=designs,
 		design_type=cls.display_name,
@@ -286,27 +293,27 @@ def image(image_id):
 @bp.route('/refresh-image/<image_id>')
 @utils.token_exempt
 # no rate limit because this endpoint has no effect if it doesn't need to run
-def refresh_image(image_id):
+async def refresh_image(image_id):
 	image_id = int(api.InvalidImageIdError.validate(image_id))
 	results = stream_with_context(format_created_designs_gen(designs_db.refresh_image(image_id)))
-	return utils.stream_template('created_image.html', image_id=image_id, results=results, verb='refreshed')
+	return await render_template('created_image.html', image_id=image_id, results=results, verb='refreshed')
 
 @bp.route('/image/<image_id>/delete', methods=['POST'])
-def delete_image(image_id):
+async def delete_image(image_id):
 	image_id = int(api.InvalidImageIdError.validate(image_id))
-	designs_db.delete_image(image_id)
+	await designs_db.delete_image(image_id)
 	flash('Design deleted successfully.', 'success')
 	return redirect('/')
 
 @bp.errorhandler(ACNHError)
-def handle_acnh_exception(ex):
+async def handle_acnh_exception(ex):
 	d = ex.to_dict()
-	return render_template('error.html', message=d['error']), d['http_status']
+	return await render_template('error.html', message=d['error']), d['http_status']
 
 @bp.errorhandler(HTTPException)
-def handle_http_exception(ex):
-	return render_template('error.html', message=ex.name, description=ex.get_description())
+async def handle_http_exception(ex):
+	return await render_template('error.html', message=ex.name, description=ex.get_description())
 
 @bp.errorhandler(IncorrectAuthorizationError)
-def handle_not_logged_in(ex):
+async def handle_not_logged_in(ex):
 	return redirect(url_for('.login', next=ex.path))

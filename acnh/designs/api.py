@@ -21,7 +21,7 @@ from ..errors import (
 
 DesignId = Union[str, int]
 
-MAX_DESIGNS = 120
+MAX_DESIGNS = 200
 DESIGN_CODE_ALPHABET = InvalidDesignCodeError.DESIGN_CODE_ALPHABET
 DESIGN_CODE_ALPHABET_VALUES = InvalidDesignCodeError.DESIGN_CODE_ALPHABET_VALUES
 
@@ -52,25 +52,27 @@ def merge_headers(data, headers):
 
 def accepts_design_id(func):
 	@wraps(func)
-	def wrapped(design_id_or_code: DesignId, *args, **kwargs):
+	async def wrapped(design_id_or_code: DesignId, *args, **kwargs):
 		if isinstance(design_id_or_code, str):
 			design_id_ = design_id(InvalidDesignCodeError.validate(design_id_or_code))
 		else:
 			design_id_ = design_id_or_code
 
-		return func(design_id_, *args, **kwargs)
+		return await func(design_id_, *args, **kwargs)
 
 	return wrapped
 
 @accepts_design_id
-def download_design(design_id, partial=False):
-	resp = acnh().request('GET', '/api/v2/designs', params={
+async def download_design(design_id, partial=False):
+	req = anynet.http.HTTPRequest.get('/api/v2/designs')
+	req.params = {
 		'offset': 0,
 		'limit': 1,
 		'q[design_id]': design_id,
-	})
-	resp.raise_for_status()
-	resp = msgpack.loads(resp.content)
+	}
+	resp = await current_app.acnh.request(req)
+	resp.raise_if_error()
+	resp = msgpack.loads(resp.body)
 
 	if not resp['total']:
 		raise UnknownDesignCodeError
@@ -81,33 +83,37 @@ def download_design(design_id, partial=False):
 		return headers
 
 	url = urllib.parse.urlparse(headers['body'])
-	resp = acnh().request('GET', url.path + '?' + url.query)
-	data = msgpack.loads(resp.content)
+	req = anynet.http.HTTPRequest.get(url.path + '?' + url.query)
+	resp = await current_app.acnh.request(req)
+	data = msgpack.loads(resp.body)
 	merge_headers(data, headers)
 	return data
 
-def list_designs(author_id: int, *, pro: bool, with_binaries: bool = False):
-	resp = acnh().request('GET', '/api/v2/designs', params={
+async def list_designs(author_id: int, *, pro: bool, with_binaries: bool = False):
+	req = anynet.http.HTTPRequest.get('/api/v2/designs')
+	req.params = {
 		'offset': 0,
 		'limit': 120,
 		'q[player_id]': author_id,
 		'q[pro]': 'true' if pro else 'false',
 		'with_binaries': 'true' if with_binaries else 'false',
-	})
-	resp.raise_for_status()
-	resp = msgpack.loads(resp.content)
+	}
+	resp = await current_app.acnh.request(req)
+	resp.raise_if_error()
+	resp = msgpack.loads(resp.body)
 	return resp
 
-def stale_designs(needed, *, pro: bool):
-	r = list_designs(config['acnh-design-creator-id'], pro=pro)
+async def stale_designs(needed, *, pro: bool):
+	r = await list_designs(config['acnh-design-creator-id'], pro=pro)
 	free_slots = MAX_DESIGNS - r['count']
 	if free_slots >= needed:
 		return []
 	return sorted(r['headers'], key=operator.itemgetter('created_at'))[:needed]
 
 @accepts_design_id
-def delete_design(design_id) -> None:
-	resp = acnh().request('DELETE', f'/api/v1/designs/{design_id}')
+async def delete_design(design_id) -> None:
+	req = anynet.http.HTTPRequest.delete(f'/api/v1/designs/{design_id}')
+	resp = await current_app.acnh.request(req)
 	if resp.status_code == HTTPStatus.NOT_FOUND:
 		raise UnknownDesignCodeError
 
@@ -116,11 +122,13 @@ design_errors = {
 	HTTPStatus.INTERNAL_SERVER_ERROR: DesignLitTheServerOnFireError,
 }
 
-def create_design(design_data) -> int:
+async def create_design(design_data) -> int:
 	"""create a design. returns the created design ID."""
-	resp = acnh().request('POST', '/api/v1/designs', data=msgpack.dumps(design_data))
+	req = anynet.http.HTTPRequest.post('/api/v1/designs')
+	req.body = msgpack.dumps(design_data)
+	resp = await current_app.acnh.request(req)
+	resp.raise_if_error()
 	with contextlib.suppress(KeyError):
 		raise design_errors[resp.status_code]
-	resp.raise_for_status()
 	data = msgpack.loads(resp.content)
 	return data['id']
