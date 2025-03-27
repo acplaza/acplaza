@@ -151,8 +151,7 @@ async def baas():
 
 async def acnh():
 	_, id_token = await baas_credentials()
-	acnh = ACNHClient(id_token)
-	acnh_token_ = await acnh_token(acnh)
+	acnh_token_ = await acnh_token(id_token)
 	async with ACNHClient(acnh_token_) as current_app.acnh:
 		yield
 
@@ -193,14 +192,14 @@ async def baas_credentials():
 	resp = toml.loads(await load_cached('tokens/baas-credentials.txt', get_credentials, duration=2.5 * 60 * 60))
 	return resp['user-id'], resp['id-token']
 
-async def acnh_token(acnh):
+async def acnh_token(id_token):
 	async def get_acnh_token():
 		req = anynet.http.HTTPRequest.post('/api/v1/auth_token')
 		req.body = msgpack.dumps({
 			'id': config['acnh-user-id'],
 			'password': config['acnh-password'],
 		})
-		async with acnh:
+		async with ACNHClient(id_token) as acnh:
 			resp = await acnh.request(req)
 		resp.raise_if_error()
 		return resp.body
