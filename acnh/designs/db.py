@@ -77,15 +77,15 @@ async def delete_image(image_id):
 	if not valid:
 		raise DeletionDeniedError
 
-	async with current_app.pg.transaction(isolation='serializable'):
-		design_ids = await current_app.pg.fetchvals(queries.delete_image_designs(), image_id)
-		await current_app.pg.execute(queries.delete_image(), image_id)
+	async with current_app.pg.acquire() as conn, conn.transaction(isolation='serializable'):
+		design_ids = await conn.fetch(queries.delete_image_designs(), image_id)
+		await conn.execute(queries.delete_image(), image_id)
 
-	for design_id in design_ids:
+	for design_id, in design_ids:
 		await api.delete_design(design_id)
 
-async def create_image(design, **kwargs):
-	return await (create_pro_design if design.pro else create_basic_design)(design, **kwargs)
+def create_image(design, **kwargs):
+	return (create_pro_design if design.pro else create_basic_design)(design, **kwargs)
 
 async def create_pro_design(design):
 	"""Upload a pro design. Returns an iterable for consistency with create_basic_design."""

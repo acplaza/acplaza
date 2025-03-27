@@ -254,7 +254,7 @@ async def create_pro_design_form(design_type_name):
 @utils.token_exempt
 async def image(image_id):
 	image_id = int(api.InvalidImageIdError.validate(image_id))
-	data = designs_db.image(image_id)
+	data = await designs_db.image(image_id)
 	image_info = data['image']
 	designs = data['designs']
 	cls = designs_encode.Design(image_info['type_code'])
@@ -275,7 +275,7 @@ async def image(image_id):
 		img = wand.image.Image(width=image_info['width'], height=image_info['height'])
 		img.import_pixels(data=image_info['layers'][0], channel_map='RGBA')
 		if image_info['designs_required'] == 1:
-			img = utils.xbrz_scale_wand_in_subprocess(img, 6)
+			img = await utils.xbrz_scale_wand_in_subprocess(img, 6)
 		# pylint: disable=not-callable
 		design = cls(**cls_kwargs, layers={'0': img})
 
@@ -305,7 +305,7 @@ async def refresh_image(image_id):
 async def delete_image(image_id):
 	image_id = int(api.InvalidImageIdError.validate(image_id))
 	await designs_db.delete_image(image_id)
-	flash('Design deleted successfully.', 'success')
+	await flash('Design deleted successfully.', 'success')
 	return redirect('/')
 
 @bp.errorhandler(ACNHError)

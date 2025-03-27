@@ -167,11 +167,11 @@ async def list_designs(author_id):
 @bp.route('/images', methods=['POST'])
 @rate_limit(1, dt.timedelta(seconds=15))
 async def create_image():
-	gen = format_created_design_results(create_image_gen())
+	gen = stream_with_context(format_created_design_results)(create_image_gen())
 	# Note: this is currently the only method (other than the rendering methods) which does *not* return JSON.
 	# This is due to its iterative nature. I considered using JSON anyway, but very few libraries
 	# support iterative JSON decoding, and we don't need anything other than an array anyway.
-	return current_app.response_class(stream_with_context(gen), mimetype='text/plain')
+	return current_app.response_class(gen, mimetype='text/plain')
 
 async def create_image_gen():
 	reqvals = await request.values
@@ -276,7 +276,7 @@ async def format_created_design_results(gen, *, header=True):
 
 	if header:
 		# pylint: disable=stop-iteration-return  # this will never raise StopIteration
-		row = next(gen)
+		row = await anext(gen)
 		yield maybe_error(row) or str(row) + '\n'
 
 	async for row in gen:

@@ -132,5 +132,5 @@ async def create_design(design_data) -> int:
 	resp.raise_if_error()
 	with contextlib.suppress(KeyError):
 		raise design_errors[resp.status_code]
-	data = msgpack.loads(resp.content)
+	data = msgpack.loads(resp.body)
 	return data['id']
