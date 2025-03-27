@@ -174,14 +174,15 @@ async def create_image():
 	return current_app.response_class(stream_with_context(gen), mimetype='text/plain')
 
 async def create_image_gen():
+	reqvals = await request.values
 	try:
-		image_name = request.values['image_name']
+		image_name = reqvals['image_name']
 	except KeyError:
 		raise InvalidImageArgument('image_name')
 
-	author_name = request.values.get('author_name') or 'Anonymous'  # we are legion
+	author_name = reqvals.get('author_name') or 'Anonymous'  # we are legion
 
-	design_type_name = request.values.get('design_type', 'basic-design')
+	design_type_name = reqvals.get('design_type', 'basic-design')
 	try:
 		if design_type_name == 'basic-design':
 			async for x in create_basic_image(image_name, author_name):
@@ -197,7 +198,7 @@ async def create_pro_image(image_name, author_name, design_type_name):
 		layers = {
 			filename: wand.image.Image(blob=file.read()).convert('PNG')
 			for filename, file
-			in request.files.items()
+			in (await request.files).items()
 		}
 	except wand.image.WandException:
 		print('In:', request.path)
@@ -221,8 +222,10 @@ async def create_pro_image(image_name, author_name, design_type_name):
 async def create_basic_image(image_name, author_name):
 	width = height = None
 
+	reqvals = await request.values
+
 	def get_int_value(name):
-		v = request.values.get(name)
+		v = reqvals.get(name)
 		if not v:
 			return None
 		try:
@@ -231,16 +234,16 @@ async def create_basic_image(image_name, author_name):
 			raise InvalidImageArgument(name)
 
 	try:
-		width, height = map(int, request.values['resize'].split('x'))
+		width, height = map(int, reqvals['resize'].split('x'))
 	except KeyError:
 		width, height = map(get_int_value, ('resize-width', 'resize-height'))
 	except ValueError:
 		raise InvalidImageArgument('resize')
 
-	scale = 'scale' in request.values or request.values.get('mode') == 'scale'
+	scale = 'scale' in reqvals or reqvals.get('mode') == 'scale'
 
 	try:
-		img = wand.image.Image(blob=request.files['0'].read()).convert('PNG')
+		img = wand.image.Image(blob=(await request.files)['0'].read()).convert('PNG')
 	except wand.image.WandException as exc:
 		print('In', request.path)
 		traceback.print_exc()
@@ -262,7 +265,7 @@ async def create_basic_image(image_name, author_name):
 	)
 
 	with img:
-		for x in designs_db.create_image(design, scale=scale):
+		async for x in designs_db.create_image(design, scale=scale):
 			yield x
 
 async def format_created_design_results(gen, *, header=True):
@@ -332,7 +335,8 @@ async def image(image_id):
 	rv['image']['design_type'] = Design(rv['image'].pop('type_code')).name
 	return rv
 
-@bp.route('/image/<image_id>.tar')
+# TODO async
+#@bp.route('/image/<image_id>.tar')
 @rate_limit(2, dt.timedelta(seconds=10))
 async def image_archive(image_id):
 	image_id = int(InvalidImageIdError.validate(image_id))

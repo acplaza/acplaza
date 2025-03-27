@@ -69,7 +69,7 @@ async def login_form():
 @rate_limit(1, dt.timedelta(seconds=5))
 async def login():
 	try:
-		token = request.form['token']
+		token = (await request.form)['token']
 	except KeyError:
 		# we don't need to have a fancy error class for this one because the user is intentionally fucking
 		# with the form
@@ -81,7 +81,7 @@ async def login():
 
 	session['user_id'] = user_id
 
-	target = utils.get_redirect_target()
+	target = await utils.get_redirect_target()
 	if target:
 		return redirect(target)
 

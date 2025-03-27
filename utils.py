@@ -35,7 +35,7 @@ def get_ipaddr():
 		return request.access_route[-num_reverse_proxies]
 	return request.remote_addr or '127.0.0.1'
 
-def limiter_key():
+async def limiter_key():
 	with contextlib.suppress(KeyError):
 		return session['user_id']
 
@@ -182,8 +182,8 @@ def is_safe_url(target, *, _allowed_schemes=frozenset({'http', 'https'})):
 		and test_url.path != url_for('.login')
 	)
 
-def get_redirect_target():
-	for target in request.values.get('next'), request.referrer:
+async def get_redirect_target():
+	for target in (await request.values).get('next'), request.referrer:
 		if not target:
 			continue
 		if is_safe_url(target):
