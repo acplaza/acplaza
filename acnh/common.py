@@ -191,7 +191,7 @@ async def aauth_token():
 
 async def anonymous_baas_credentials():
 	async def cb(): return (await (await baas()).authenticate(await device_token_baas(), config['penne-id']))['accessToken']
-	return await load_cached('tokens/anonymous-baas.txt', cb)
+	return await load_cached('tokens/anonymous-baas.txt', cb, duration=60 * 60)
 
 async def baas_credentials():
 	async def get_credentials():
