@@ -4,12 +4,15 @@ import io
 import json
 import traceback
 import urllib.parse
+import sys
 
 import quart.json
 import wand.image
 from quart import Blueprint, jsonify, current_app, request, stream_with_context
 from quart_rate_limiter import rate_limit
 from werkzeug.exceptions import HTTPException
+import msgpack
+import xbrz
 
 from acnh import dodo
 import acnh.designs.api as designs_api
@@ -34,6 +37,7 @@ from acnh.errors import (
 )
 from acnh.designs.db import PageSpecifier, PageDirection
 from acnh.designs.encode import BasicDesign, Design
+from gen_subprocess import gen_subprocess
 
 def init_app(app):
 	app.register_blueprint(bp)
@@ -63,54 +67,58 @@ async def maybe_scale(image):
 
 	return await utils.xbrz_scale_wand_in_subprocess(image, scale_factor)
 
-# TODO port to async
+@bp.route('/design/<design_code>.tar')
+@rate_limit(2, dt.timedelta(seconds=10))
+async def design_archive(design_code):
+	InvalidDesignCodeError.validate(design_code)
+	out_data = {}
+	out_data['render_internal'] = 'internal_layers' in request.args
+	out_data['data'] = await designs_api.download_design(design_code)
+	out_data['scale_factor'] = get_scale_factor()
+	design_name = out_data['data']['mMeta']['mMtDNm']
 
-#@bp.route('/design/<design_code>.tar')
-#@limiter.limit('2 per 10 seconds')
-#def design_archive(design_code):
-#	InvalidDesignCodeError.validate(design_code)
-#	render_internal = 'internal_layers' in request.args
-#	get_scale_factor()  # do the validation now since apparently it doesn't work in the generator
-#	data = designs_api.download_design(design_code)
-#	meta, body = data['mMeta'], data['mData']
-#	# pylint: disable=unused-variable
-#	type_code = meta['mMtUse']
-#	design_name = meta['mMtDNm']  # hungarian notation + camel case + abbreviations DO NOT mix well
-#
-#	def gen():
-#		# pylint: disable=no-member  # pylint are you drunk?
-#		if type_code == BasicDesign.type_code or render_internal:
-#			layers = designs_render.render_layers(body)
-#		else:
-#			layers = Design.from_data(data).layer_images.items()
-#
-#		yield from make_tar(design_name, data['updated_at'], layers)
-#
-#	encoded_filename = urllib.parse.quote(design_name + '.tar')
-#	return current_app.response_class(
-#		stream_with_context(gen()),
-#		mimetype='application/x-tar',
-#		headers={'Content-Disposition': f"attachment; filename*=utf-8''{encoded_filename}"},
-#	)
+	encoded_filename = urllib.parse.quote(design_name + '.tar')
+	return current_app.response_class(
+		gen_subprocess(__name__, 'design_archive_gen', msgpack.dumps(out_data)),
+		mimetype='application/x-tar',
+		headers={'Content-Disposition': f"attachment; filename*=utf-8''{encoded_filename}"},
+	)
 
-#def make_tar(design_name, updated_at, layers):
-#	tar = tarfile_stream.open(mode='w|')
-#	yield from tar.header()
-#
-#	for name, image in layers:
-#		tarinfo = tarfile_stream.TarInfo(f'{design_name}/{name}.png')
-#		tarinfo.mtime = updated_at
-#
-#		image = maybe_scale(image)
-#		out = io.BytesIO()
-#		with image.convert('png') as c:
-#			c.save(file=out)
-#		tarinfo.size = out.tell()
-#		out.seek(0)
-#
-#		yield from tar.addfile(tarinfo, out)
-#
-#	yield from tar.footer()
+def design_archive_gen():
+	in_data = msgpack.load(sys.stdin.buffer)
+	data = in_data['data']
+	meta, body = data['mMeta'], data['mData']
+	type_code = meta['mMtUse']
+	design_name = meta['mMtDNm']  # hungarian notation + camel case + abbreviations DO NOT mix well
+	render_internal = in_data['render_internal']
+
+	# pylint: disable=no-member  # pylint are you drunk?
+	if type_code == BasicDesign.type_code or render_internal:
+		layers = designs_render.render_layers(body)
+	else:
+		layers = Design.from_data(data).layer_images.items()
+
+	yield from make_tar(design_name, data['updated_at'], layers, scale_factor)
+
+def make_tar(design_name, updated_at, layers, scale_factor):
+	tar = tarfile_stream.open(mode='w|')
+	yield from tar.header()
+
+	for name, image in layers:
+		tarinfo = tarfile_stream.TarInfo(f'{design_name}/{name}.png')
+		tarinfo.mtime = updated_at
+
+		if scale_factor != 1:
+			image = xbrz.scale_wand(image, scale_factor)
+		out = io.BytesIO()
+		with image.convert('png') as c:
+			c.save(file=out)
+		tarinfo.size = out.tell()
+		out.seek(0)
+
+		yield from tar.addfile(tarinfo, out)
+
+	yield from tar.footer()
 
 # no rate limit as we need to render the thumbnails for all of an author's designs quickly
 @bp.route('/design/<design_code>/<layer>.png')
@@ -335,13 +343,27 @@ async def image(image_id):
 	rv['image']['design_type'] = Design(rv['image'].pop('type_code')).name
 	return rv
 
-# TODO async
-#@bp.route('/image/<image_id>.tar')
+@bp.route('/image/<image_id>.tar')
 @rate_limit(2, dt.timedelta(seconds=10))
 async def image_archive(image_id):
 	image_id = int(InvalidImageIdError.validate(image_id))
-	image_info = (await designs_db.image(image_id))['image']
-	render_internal = 'internal_layers' in request.args
+	out_data = {}
+	out_data['image_info'] = (await designs_db.image(image_id))['image']
+	out_data['render_internal'] = 'internal_layers' in request.args
+
+	encoded_filename = urllib.parse.quote(out_data['image_info']['image_name'] + '.tar')
+	return current_app.response_class(
+		gen_subprocess(__name__, 'image_archive_gen', msgpack.dumps(out_data)),
+		mimetype='application/x-tar',
+		headers={
+			'Content-Disposition': f"attachment; filename*=utf-8''{encoded_filename}",
+		},
+	)
+
+def image_archive_gen():
+	in_data = msgpack.load(sys.stdin.buffer)
+	image_info = in_data['image_info']
+	render_internal = in_data['render_internal']
 	layers = {}
 	cls = Design(image_info['type_code'])
 	for layer, image_blob in zip(cls.external_layers, image_info['layers']):
@@ -359,15 +381,7 @@ async def image_archive(image_id):
 	else:
 		requested_layers = layers.items()
 
-	gen = make_tar(image_info['image_name'], image_info['created_at'].timestamp(), requested_layers)
-	encoded_filename = urllib.parse.quote(image_info['image_name'] + '.tar')
-	return current_app.response_class(
-		stream_with_context(gen),
-		mimetype='application/x-tar',
-		headers={
-			'Content-Disposition': f"attachment; filename*=utf-8''{encoded_filename}",
-		},
-	)
+	yield from make_tar(image_info['image_name'], image_info['created_at'].timestamp(), requested_layers, scale_factor=1)
 
 @bp.route('/image/<image_id>/refresh', methods=['POST'])
 async def refresh_image(image_id):

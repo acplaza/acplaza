@@ -95,15 +95,14 @@ async def list_designs(author_id: int, *, pro: bool, with_binaries: bool = False
 	req = anynet.http.HTTPRequest.get('/api/v2/designs')
 	req.params = {
 		'offset': 0,
-		'limit': 120,
+		'limit': 200,
 		'q[player_id]': author_id,
 		'q[pro]': 'true' if pro else 'false',
 		'with_binaries': 'true' if with_binaries else 'false',
 	}
 	resp = await current_app.acnh.request(req)
 	resp.raise_if_error()
-	resp = msgpack.loads(resp.body)
-	return resp
+	return msgpack.loads(resp.body)
 
 async def stale_designs(needed, *, pro: bool):
 	r = await list_designs(config['acnh-design-creator-id'], pro=pro)

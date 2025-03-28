@@ -135,8 +135,8 @@ async def designs_form():
 		return redirect('/')
 
 bp.route('/design/<design_code>/<layer>.png')(api.design_layer)
-#bp.route('/design/<design_code>.tar')(api.design_archive)
-#bp.route('/image/<image_id>.tar')(api.image_archive)
+bp.route('/design/<design_code>.tar')(api.design_archive)
+bp.route('/image/<image_id>.tar')(api.image_archive)
 
 @bp.route('/design/<design_code>')
 @rate_limit(2, dt.timedelta(seconds=10))
